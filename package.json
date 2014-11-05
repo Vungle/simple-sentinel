@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "An easy-to-use redis-sentinel client for Node.js",
   "contributors": [
-    "Ray Myers <raydog87@gmail.com>",
+    "Raymond Myers <raydog87@gmail.com>",
     "Chrissy Donovan"
   ],
   "scripts": {
@@ -24,10 +24,11 @@
   ],
   "dependencies": {
     "step": "0.0.5",
-    "node-redis": "*"
+    "lodash": "2.4.1"
   },
   "devDependencies": {
-    "mocha": "2.0.1"
+    "mocha": "2.0.1",
+    "redis": "0.12.1"
   },
   "private": true,
   "license": "MIT"
