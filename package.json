@@ -1,0 +1,34 @@
+{
+  "name": "simple-sentinel",
+  "version": "0.0.1",
+  "description": "An easy-to-use redis-sentinel client for Node.js",
+  "contributors": [
+    "Ray Myers <raydog87@gmail.com>",
+    "Chrissy Donovan"
+  ],
+  "scripts": {
+    "test": "mocha"
+  },
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vungle/simple-sentinel"
+  },
+  "bugs": {
+    "url": "https://github.com/Vungle/simple-sentinel/issues"
+  },
+  "keywords": [
+    "redis",
+    "sentinel",
+    "redis-sentinel"
+  ],
+  "dependencies": {
+    "step": "0.0.5",
+    "node-redis": "*"
+  },
+  "devDependencies": {
+    "mocha": "2.0.1"
+  },
+  "private": true,
+  "license": "MIT"
+}
