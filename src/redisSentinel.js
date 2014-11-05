@@ -1,4 +1,5 @@
 var events = require('events')
+  , redis = require('redis')
   , util = require('./util');
 
 var client_redis = null;
@@ -9,11 +10,16 @@ function RedisSentinel(sentinels, options) {
     return new RedisSentinel(sentinels, options);
   }
 
-  // Take the options with the default values:
-  this.options = _.extend(options, {
-    watchedReplicaNames: null
-    createClient:        client_redis && client_redis.createClient
-  });
+  // Extend the default values with the custom parameters:
+  var defaults = {
+    watchedNames: null,
+    createClient: client_redis && client_redis.createClient,
+    redisOptions: {}
+  };
+  
+  this.options = _.extend(defaults, options);
+
+  
 }
 
 // Inherit from EventEmitter, so we can emit stuff:

@@ -6,6 +6,12 @@ var node_util = require('util')
 var util    = _.extend({}, node_util);
 
 
+/**
+ * Will try to require something from a parent module.
+ * 
+ * @param  {String} module_name The name of the module to require. Like the args to a normal require.
+ * @return {Object}             The require()-ed module, or null if we couldn't find it at any level.
+ */
 function parentRequire(module_name) {
   var m = module.parent;
 
@@ -17,6 +23,24 @@ function parentRequire(module_name) {
     }
   }
   return null;
+}
+
+
+/**
+ * Will shuffle an array in-place with the Fisher-Yates algorithm.
+ * 
+ * @param  {Array} arr The array to shuffle
+ */
+function shuffleArray(arr) {
+  var i, rnd, tmp
+    , len = arr.length;
+
+  for (i = 0 ; i < len-1; i++) {
+    rnd = i + Math.floor(Math.random() * (len - i));
+    tmp = arr[i];
+    arr[i] = arr[rnd];
+    arr[rnd] = tmp;
+  }
 }
 
 

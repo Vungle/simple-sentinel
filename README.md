@@ -53,6 +53,8 @@ Will create the structure, and start the process of connecting. This object is a
 
 `config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
 - `watchedReplicaNames` is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
+- `createClient` is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require the node-redis library from the scope of your project automagically, but if you are wanting to do something more advanced, then you can set this manually. The function will be called with the arguments: `(port, host, options)`.
+- `redisOptions` is an object that is passed to createClient as options. Default is `{}`.
 
 ##### Function: getRepl(name)
 

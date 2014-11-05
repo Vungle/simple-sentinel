@@ -24,11 +24,11 @@
   ],
   "dependencies": {
     "step": "0.0.5",
-    "lodash": "2.4.1"
+    "lodash": "2.4.1",
+    "redis": "0.12.1"
   },
   "devDependencies": {
-    "mocha": "2.0.1",
-    "redis": "0.12.1"
+    "mocha": "2.0.1"
   },
   "private": true,
   "license": "MIT"
