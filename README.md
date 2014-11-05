@@ -48,7 +48,7 @@ This represents a connection to a cluster of redis-sentinels. It is also an Even
 Will create the structure, and start the process of connecting. This object is an EventEmitter, and so events will be emitted when connections are done, and connections are available.
 
 `sentinels` is an Array of objects, each with connection info to a single redis-sentinel. These objects should contain:
-- `host` is the hostname to connect to. Default: localhost.
+- `host` is the hostname to connect to.
 - `port` is the port to connect to. Default: 26379.
 
 `config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
