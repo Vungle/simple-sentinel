@@ -30,6 +30,7 @@ function parentRequire(module_name) {
  * Will shuffle an array in-place with the Fisher-Yates algorithm.
  * 
  * @param  {Array} arr The array to shuffle
+ * @return {Array}     The array, for convenience.
  */
 function shuffleArray(arr) {
   var i, rnd, tmp
@@ -48,7 +49,7 @@ function shuffleArray(arr) {
 util._             = _;
 util.step          = require('step');
 util.parentRequire = parentRequire;
-util.redis
+util.shuffleArray  = shuffleArray;
 
 
 module.exports = util;
