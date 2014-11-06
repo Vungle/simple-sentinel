@@ -79,6 +79,55 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
 
 
 /**
+ * Extremely simple and basic validation of the INFO response for a sentinel:
+ * @param  {String}  info_data The string response from an INFO command.
+ * @return {Boolean}           True IFF we're accepting it.
+ */
+RedisSentinel.prototype._isInfoResponseValid = function _isInfoResponseValid(info_data) {
+  if (!info_data || typeof info_data !== 'string') {
+    this._log("INFO failed: Bad response");
+    return false;
+  }
+
+  if (info_data.indexOf("# Sentinel") < 0) {
+    this._log("INFO failed: Server is not a sentinel");
+    return false;
+  }
+
+  return true;
+};
+
+
+/** 
+ * Will dispatch a Redis command that can time out.
+ * 
+ * @param  {RedisClient} client The redis client to use.
+ * @param  {String}      cmd    The command name.
+ * @param  {String}      opts   An array of options. Optional.
+ * @param  {Function}    cb     Called with (err, results)
+ */
+RedisSentinel.prototype._timedCommand = function _timedCommand(client, cmd, opts, cb) {
+  if (!cb) {
+    cb = opts;
+    opts = [];
+  }
+
+  var times_called = 0;
+  function _handleResult(err) {
+    clearTimeout(cmd_timeout);
+    if (times_called++) { return; }
+    cb.apply(null, arguments);
+  }
+
+  var cmd_timeout = setTimeout(function () {
+    _handleResult(new Error("Command timed out"));
+  }, this.options.commandTimeout);
+
+  client.send_command(cmd, opts, _handleResult);
+};
+
+
+/**
  * A simple logging function. Will write to stdout IFF we were told to in the user configs.
  * Arguments are the same format as for node util's format function, with the exception that
  * all instances of Error with a 'stack' property are evaluated as that, and as a string
@@ -127,40 +176,24 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
 
         sentinel._log("Successfully connected to %s:%d", conf.host, conf.port);
         
-        var info_handler_calls = 0;
-        function _handleInfo(err, results) {
-          if (info_handler_calls++) { return; }
+        sentinel._timedCommand(client, "INFO", function (err, result) {
           if (err) {
             sentinel._log("INFO failed:", err);
             client.end();
             return next();
           }
-          
-          // Validate that this is a good info...
-          if (!results) {
-            sentinel._log("INFO failed: Bad response");
+
+          if (!sentinel._isInfoResponseValid(result)) {
             client.end();
             return next();
           }
 
-          if (results.indexOf("# Sentinel") < 0) {
-            sentinel._log("INFO failed: Server is not a sentinel");
-            client.end();
-            return next();
-          }
-
-          // Be ready for a redis end:
           client.once('end', function () {
             sentinel._log("REDIS ENDED OMG");
           });
 
           cb(null, client);
-        }
-
-        client.info(_handleInfo);
-        setTimeout(function () {
-          _handleInfo(new Error("Timeout during request"));
-        }, sentinel.options.commandTimeout);
+        });
       }
 
       function _onError() {
