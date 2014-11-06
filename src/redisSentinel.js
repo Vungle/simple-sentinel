@@ -18,12 +18,13 @@ function RedisSentinel(sentinels, options) {
 
   // Extend the default values with the custom parameters:
   var defaults = {
-    createClient:   (client_redis && client_redis.createClient) || redis.createClient,
-    logging:        false,
-    redisOptions:   {},
-    watchedNames:   null,
-    timeout:        500,
-    commandTimeout: 1500
+    createClient:       (client_redis && client_redis.createClient) || redis.createClient,
+    debugLogging:       false,
+    redisOptions:       {},
+    watchedNames:       null,
+    timeout:            500,
+    commandTimeout:     1500,
+    outageRetryTimeout: 5000
   };
   this.options = util._.extend(defaults, options);
 
@@ -38,16 +39,24 @@ function RedisSentinel(sentinels, options) {
   });
 
   // Try to connect a sentinel:
-  this._connectSentinel(function (err, client) {
+  this._connectSentinel(_setupClient);
+
+  function _setupClient(err, client) {
     if (err) {
       sentinel.emit("error", err);
       return;
     }
 
+    // Keep track of the client:
+    client.once('end', function () {
+      sentinel._log("REDIS ENDED OMG");
+      sentinel._connectSentinel(_setupClient);
+    });
+
     // Else, we have a sentinel connection, so store it, and try to fetch configs:
     sentinel.client = client;
     sentinel._loadConfigs();
-  });
+  }
 }
 
 // Inherit from EventEmitter, so we can emit stuff:
@@ -134,7 +143,7 @@ RedisSentinel.prototype._timedCommand = function _timedCommand(client, cmd, opts
  * otherwise.
  */
 RedisSentinel.prototype._log = function _log() {
-  if ( ! this.options.logging) { return; }
+  if ( ! this.options.debugLogging) { return; }
 
   var i, len = arguments.length;
   for (i=0; i<len; i++) {
@@ -188,10 +197,6 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
             return next();
           }
 
-          client.once('end', function () {
-            sentinel._log("REDIS ENDED OMG");
-          });
-
           cb(null, client);
         });
       }
@@ -207,8 +212,11 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
       client.once('error', _onError);
     },
     function (err) {
-      err = err || new Error("Could not connect to a sentinel. *<:'O(");
-      cb(err);
+      if (err) { return cb(err); }
+
+      // We made it through all endpoint, so loop around and try again in a few seconds:
+      sentinel._log("All sentinels down. Pausing before retry...");
+      setTimeout(sentinel._connectSentinel.bind(sentinel, cb), sentinel.options.outageRetryTimeout);
     }
   );
 };

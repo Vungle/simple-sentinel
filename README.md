@@ -47,17 +47,19 @@ This represents a connection to a cluster of redis-sentinels. It is also an Even
 
 Will create the structure, and start the process of connecting. This object is an EventEmitter, and so events will be emitted when connections are done, and connections are available.
 
-`sentinels` is an Array of objects, each with connection info to a single redis-sentinel. These objects should contain:
-- `host` is the hostname to connect to.
-- `port` is the port to connect to. Default: 26379.
+- `sentinels` is an Array of objects, each with connection info to a single redis-sentinel. These objects should contain:
+    - `host` is the hostname to connect to.
+    - `port` is the port to connect to. Default: 26379.
 
-`config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
-- `watchedReplicaNames` is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
-- `createClient` is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require the node-redis library from the scope of your project automagically, but if you are wanting to do something more advanced, then you can set this manually. The function will be called with the arguments: `(port, host, options)`.
-- `redisOptions` is an object that is passed to createClient as options. Default is `{}`.
-- `logging` is a Boolean that should be set to `true` if you want to debug the library. Default is `false`.
-- `timeout` is a Number that represents the connect timeout to the sentinel servers in milliseconds. Default is 500.
-- `commandTimeout` is a Number that represents the maximum amount of time (in milliseconds) that we'll wait for a command on this sentinel to return. Default is 1500.
+- `config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
+    - `watchedReplicaNames` (**Array**) is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
+    - `createClient` (**Function**) is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require the [node-redis](https://github.com/mranney/node_redis) library from the scope of your project automagically, but if you are wanting to do something more advanced, then you can set this manually. The function will be called with the arguments: `(port, host, options)`.
+    - `redisOptions` (**Object**) is the object that is passed to createClient as options. Default is `{}`.
+    - `debugLogging` (**Boolean**) is `true` if you want to see the noisy debug log. Default is `false`.
+    - `timeout` (**Number**) is the connect timeout in milliseconds for connecting to a sentinel server. Default is 500.
+    - `commandTimeout` (**Number**) is the maximum number of milliseconds that we'll wait for a command on this sentinel to return. Default is 1500.
+    - `outageRetryTimeout` (**Number**) is the number of milliseconds before trying again if ALL sentinels are down. Default is 5000.
+
 ##### Function: getRepl(name)
 
 Takes the string name of a Replica, and will return a `RedisReplica` object (see below). Will return `null` if we are not tracking that Replica.
@@ -78,17 +80,17 @@ Has arguments: `(error)`
 Emitted when the connection information around a Replica has changed.
 
 Has arguments: `(name, replica)`
-- `name` is the String name of a watched Replica
-- `replica` is an instance of `RedisReplica` (see below).
+- `name` (**String**) is name of a watched Replica.
+- `replica` (**RedisReplica**) is the `RedisReplica` for the given name (see below).
 
 ##### Event: "event"
 
 Emitted when an important event has happened. This is mostly useful for logging.
 
 Has arguments: `(replica_name, event_type, event_message`
-- `replica_name` is a String that represents the replica that experienced the event, or `null` if the redis-sentinel itself had an issue.
-- `event_type` is a short String that describes the event type.
-- `event_message` is a short String describing what happened.
+- `replica_name` (**String**) the replica that experienced the event, or `null` if the redis-sentinel itself had an issue.
+- `event_type` (**String**) is the event type.
+- `event_message` (**String**) describes what happened.
 
 #### RedisReplica
 
@@ -96,7 +98,7 @@ This object stores the connection information to all object in a Replica Set, an
 
 ##### Function: connectMaster()
 
-Will create a connection to the master server in the Replica Set. Returns a brand-new `RedisClient`. Will be `null` if there is no way to currently connect to the master.
+Will create a connection to the master server in the Replica Set. Returns a brand-new `RedisClient`. Will be `null` if there is no way to currently connect to the master. (Uh-oh.)
 
 ##### Function: connectSlave()
 
