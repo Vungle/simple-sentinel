@@ -55,8 +55,9 @@ Will create the structure, and start the process of connecting. This object is a
 - `watchedReplicaNames` is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
 - `createClient` is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require the node-redis library from the scope of your project automagically, but if you are wanting to do something more advanced, then you can set this manually. The function will be called with the arguments: `(port, host, options)`.
 - `redisOptions` is an object that is passed to createClient as options. Default is `{}`.
-- `logging` is a boolean that should be set to `true` if you want to debug the library. Default is `false`.
-
+- `logging` is a Boolean that should be set to `true` if you want to debug the library. Default is `false`.
+- `timeout` is a Number that represents the connect timeout to the sentinel servers in milliseconds. Default is 500.
+- `commandTimeout` is a Number that represents the maximum amount of time (in milliseconds) that we'll wait for a command on this sentinel to return. Default is 1500.
 ##### Function: getRepl(name)
 
 Takes the string name of a Replica, and will return a `RedisReplica` object (see below). Will return `null` if we are not tracking that Replica.

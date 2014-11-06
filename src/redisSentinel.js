@@ -4,6 +4,7 @@ var events = require('events')
 
 var client_redis = null;
 
+// redis.debug_mode = true;
 
 function RedisSentinel(sentinels, options) {
   if (!(this instanceof RedisSentinel)) {
@@ -17,22 +18,24 @@ function RedisSentinel(sentinels, options) {
 
   // Extend the default values with the custom parameters:
   var defaults = {
-    createClient: client_redis && client_redis.createClient,
-    logging:      false,
-    redisOptions: {},
-    watchedNames: null,
+    createClient:   (client_redis && client_redis.createClient) || redis.createClient,
+    logging:        false,
+    redisOptions:   {},
+    watchedNames:   null,
+    timeout:        500,
+    commandTimeout: 1500
   };
-  this.options = _.extend(defaults, options);
+  this.options = util._.extend(defaults, options);
+
+  this._log("Has client redis:", !!client_redis);
 
   // Store connection info for all the sentinels:
-  this.sentinels = util.shuffleArray(
-    sentinels.map(function (conf) {
-      var host = conf.host
-        , port = conf.port || 26379;
+  this.sentinels = sentinels.map(function (conf) {
+    var host = conf.host
+      , port = conf.port || 26379;
 
-      return { host: host, port: port };
-    })
-  );
+    return { host: host, port: port };
+  });
 
   // Try to connect a sentinel:
   this._connectSentinel(function (err, client) {
@@ -92,7 +95,7 @@ RedisSentinel.prototype._log = function _log() {
     }
   }
   var str = util.format.apply(util, arguments);
-  console.log(str);
+  console.log("Sentinel:", str);
 }
 
 
@@ -105,15 +108,59 @@ RedisSentinel.prototype._log = function _log() {
 RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
   var sentinel = this;
 
+  // Make sure we are iterating over the sentinels in a random order:
+  util.shuffleArray(this.sentinels);
+
+  // Try them all!
   util.async.forEachSeries(
     this.sentinels,
     function withEachSentinel(conf, next) {
-      var client = redis.createClient(conf.port, conf.host);
+      var redis_config = {
+        connect_timeout: sentinel.options.timeout, // Don't connect to down things
+        max_attempts:    1,                        // No retry logic, since we try to handle that
+        no_ready_check:  1                         // Don't do a ready check, since we do a check.
+      };
+      var client = redis.createClient(conf.port, conf.host, redis_config);
       
       function _onReady() {
         client.removeListener('error', _onError);
+
         sentinel._log("Successfully connected to %s:%d", conf.host, conf.port);
-        cb(null, client);
+        
+        var info_handler_calls = 0;
+        function _handleInfo(err, results) {
+          if (info_handler_calls++) { return; }
+          if (err) {
+            sentinel._log("INFO failed:", err);
+            client.end();
+            return next();
+          }
+          
+          // Validate that this is a good info...
+          if (!results) {
+            sentinel._log("INFO failed: Bad response");
+            client.end();
+            return next();
+          }
+
+          if (results.indexOf("# Sentinel") < 0) {
+            sentinel._log("INFO failed: Server is not a sentinel");
+            client.end();
+            return next();
+          }
+
+          // Be ready for a redis end:
+          client.once('end', function () {
+            sentinel._log("REDIS ENDED OMG");
+          });
+
+          cb(null, client);
+        }
+
+        client.info(_handleInfo);
+        setTimeout(function () {
+          _handleInfo(new Error("Timeout during request"));
+        }, sentinel.options.commandTimeout);
       }
 
       function _onError() {

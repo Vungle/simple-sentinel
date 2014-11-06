@@ -42,6 +42,8 @@ function shuffleArray(arr) {
     arr[i] = arr[rnd];
     arr[rnd] = tmp;
   }
+  
+  return arr;
 }
 
 
