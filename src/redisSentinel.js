@@ -1,6 +1,5 @@
 var events = require('events')
   , redis = require('redis')
-  , async = require('async')
   , util = require('./util');
 
 var client_redis = null;
@@ -106,7 +105,7 @@ RedisSentinel.prototype._log = function _log() {
 RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
   var sentinel = this;
 
-  async.forEachSeries(
+  util.async.forEachSeries(
     this.sentinels,
     function withEachSentinel(conf, next) {
       var client = redis.createClient(conf.port, conf.host);
@@ -133,6 +132,11 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
     }
   );
 };
+
+
+RedisSentinel.prototype._loadConfigs = function _loadConfigs() {
+
+}
 
 
 // Exports:

@@ -47,7 +47,7 @@ function shuffleArray(arr) {
 
 // Now to put our own stuff in there:
 util._             = _;
-util.step          = require('step');
+util.async         = require('async');
 util.parentRequire = parentRequire;
 util.shuffleArray  = shuffleArray;
 
