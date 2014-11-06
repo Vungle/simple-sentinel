@@ -1,5 +1,6 @@
 var events = require('events')
   , redis = require('redis')
+  , async = require('async')
   , util = require('./util');
 
 var client_redis = null;
@@ -9,6 +10,8 @@ function RedisSentinel(sentinels, options) {
   if (!(this instanceof RedisSentinel)) {
     return new RedisSentinel(sentinels, options);
   }
+
+  var sentinel = this;
 
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
@@ -32,7 +35,17 @@ function RedisSentinel(sentinels, options) {
     })
   );
 
+  // Try to connect a sentinel:
+  this._connectSentinel(function (err, client) {
+    if (err) {
+      sentinel.emit("error", err);
+      return;
+    }
 
+    // Else, we have a sentinel connection, so store it, and try to fetch configs:
+    sentinel.client = client;
+    sentinel._loadConfigs();
+  });
 }
 
 // Inherit from EventEmitter, so we can emit stuff:
@@ -82,6 +95,44 @@ RedisSentinel.prototype._log = function _log() {
   var str = util.format.apply(util, arguments);
   console.log(str);
 }
+
+
+/**
+ * Will try to connect to each item in the sentinels array, in order, until it is
+ * successful.
+ * 
+ * @param  {Function} cb Called when done with args: (err, client)
+ */
+RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
+  var sentinel = this;
+
+  async.forEachSeries(
+    this.sentinels,
+    function withEachSentinel(conf, next) {
+      var client = redis.createClient(conf.port, conf.host);
+      
+      function _onReady() {
+        client.removeListener('error', _onError);
+        sentinel._log("Successfully connected to %s:%d", conf.host, conf.port);
+        cb(null, client);
+      }
+
+      function _onError() {
+        client.removeListener('ready', _onReady);
+        client.end();
+        sentinel._log("Failed to connect to %s:%d", conf.host, conf.port);
+        next();
+      }
+
+      client.once('ready', _onReady);
+      client.once('error', _onError);
+    },
+    function (err) {
+      err = err || new Error("Could not connect to a sentinel. *<:'O(");
+      cb(err);
+    }
+  );
+};
 
 
 // Exports:
