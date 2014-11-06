@@ -121,18 +121,15 @@ RedisSentinel.prototype._timedCommand = function _timedCommand(client, cmd, opts
     opts = [];
   }
 
-  var times_called = 0;
-  function _handleResult(err) {
+  cb = util._.once(cb);
+
+  var timeout_err = new Error("Command timed out");
+  var cmd_timeout = setTimeout( cb.bind(null, timeout_err), this.options.commandTimeout );
+
+  client.send_command(cmd, opts, function () {
     clearTimeout(cmd_timeout);
-    if (times_called++) { return; }
     cb.apply(null, arguments);
-  }
-
-  var cmd_timeout = setTimeout(function () {
-    _handleResult(new Error("Command timed out"));
-  }, this.options.commandTimeout);
-
-  client.send_command(cmd, opts, _handleResult);
+  });
 };
 
 
