@@ -15,6 +15,7 @@ function RedisSentinel(sentinels, options) {
 
   // Add in the things that will be asynchronously populated later:
   this.client = null;
+  this.replicas = {};
 
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
@@ -304,6 +305,9 @@ RedisSentinel.prototype._loadConfigs = function _loadConfigs(cb) {
         return;
       }
       tracked_masters[name] = all_masters[name];
+      if (!sentinel.replicas.hasOwnProperty(name)) {
+        
+      }
     });
 
     console.log(tracked_masters);
