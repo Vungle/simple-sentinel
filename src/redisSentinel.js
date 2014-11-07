@@ -13,6 +13,9 @@ function RedisSentinel(sentinels, options) {
 
   var sentinel = this;
 
+  // Add in the things that will be asynchronously populated later:
+  this.client = null;
+
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
 
@@ -86,6 +89,72 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
   });
 };
 
+
+/** 
+ * Will take in the response from a "SENTINEL MASTERS" command, and return a parsed struct.
+ * 
+ * @param  {Array} result The response from SENTINEL MASTERS.
+ * @return {Object}       An object like: {"name": {ip: "...", ...}, ...} if ok. null otherwise
+ */
+RedisSentinel.prototype._parseMastersList = function _parseMastersList(result) {
+  var i, len, out = {};
+
+  var ns = "Master list rejected:";
+
+  if (!result || !Array.isArray(result)) {
+    this._log(ns, "Bad input.");
+    return null;
+  }
+  
+  for (i=0,len=result.length; i<len; i++) {
+    var row = result[i], row_len, j, parsed_row = {};
+
+    if (!Array.isArray(row) || row.length % 2 === 1) {
+      this._log(ns, "Malformed row");
+      return null;
+    }
+    
+    for (j=0,row_len=row.length; j<row_len; j+=2) {
+      var key = row[j], value = row[j+1];
+
+      if (parsed_row.hasOwnProperty(key)) {
+        this._log(ns, "Row had duplicate property");
+        return null;
+      }
+
+      // Special-case for port entries:
+      if (key === "port") {
+        try {
+          value = parseInt(value, 10);
+        } catch (ex) {
+          this._log(ns, "Row has a non-numeric port");
+          return null;
+        }
+      }
+
+      // Special-case for flags:
+      if (key === "flags") {
+        value = value.split(",");
+      }
+      
+      parsed_row[key] = value;
+    }
+
+    if (!parsed_row.hasOwnProperty("name")) {
+      this._log(ns, "Row lacked a name property");
+      return null;
+    }
+
+    if (out.hasOwnProperty(parsed_row.name)) {
+      this._log(ns, "Duplicate rows with name:", parsed_row.name);
+      return null;
+    }
+    
+    out[parsed_row.name] = parsed_row;
+  }
+
+  return out;
+};
 
 /**
  * Extremely simple and basic validation of the INFO response for a sentinel:
@@ -219,8 +288,28 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
 };
 
 
-RedisSentinel.prototype._loadConfigs = function _loadConfigs() {
+RedisSentinel.prototype._loadConfigs = function _loadConfigs(cb) {
+  var sentinel = this;
 
+  this._timedCommand(this.client, "SENTINEL", ["masters"], function (err, res) {
+    if (err) { return cb(err); }
+
+    var all_masters     = sentinel._parseMastersList(res)
+      , tracked_names   = sentinel.options.watchedNames || Object.keys(all_masters)
+      , tracked_masters = {};
+
+    tracked_names.forEach(function (name) {
+      if ( !all_masters.hasOwnProperty(name) ) {
+        sentinel._log("Warning: Replica name in watchedNames but not on Sentinel:", name);
+        return;
+      }
+      tracked_masters[name] = all_masters[name];
+    });
+
+    console.log(tracked_masters);
+    
+    return;
+  });
 }
 
 
