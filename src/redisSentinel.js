@@ -281,9 +281,16 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
     function (err) {
       if (err) { return cb(err); }
 
-      // We made it through all endpoint, so loop around and try again in a few seconds:
-      sentinel._log("All sentinels down. Pausing before retry...");
-      setTimeout(sentinel._connectSentinel.bind(sentinel, cb), sentinel.options.outageRetryTimeout);
+      // We made it through all endpoints. What do??
+      if (sentinel.options.outageRetryTimeout < 0) {
+        // Stop, and emit error:
+        return cb(new Error("Could not connect to a sentinel. *<:'O("));
+
+      } else {
+        // Loop around and try again in a few seconds:
+        sentinel._log("All sentinels down. Pausing before retry...");
+        setTimeout(sentinel._connectSentinel.bind(sentinel, cb), sentinel.options.outageRetryTimeout);
+      }
     }
   );
 };
@@ -306,7 +313,7 @@ RedisSentinel.prototype._loadConfigs = function _loadConfigs(cb) {
       }
       tracked_masters[name] = all_masters[name];
       if (!sentinel.replicas.hasOwnProperty(name)) {
-        
+
       }
     });
 
