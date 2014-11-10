@@ -101,25 +101,52 @@ RedisReplica.prototype._loadSlaveConfigs = function _loadSlaveConfigs(slaves) {
 }
 
 
+/**
+ * Will get a connection to the master, if it's alive.
+ * @return {RedisClient} The RedisClient for this replica's master, or null if the server is down.
+ */
 RedisReplica.prototype.connectMaster = function connectMaster() {
-  if (!this.master) { return null; }
+  if (!this.master || RedisReplica._isDown("master", this.master)) { return null; }
   return this.createClient.call(null, this.master.port, this.master.ip, this.redisOptions);
 };
 
+
+/**
+ * Will connect to a random living slave.
+ * @return {RedisClient} The RedisClient for a random living slave, or null if all slaves are down.
+ */
 RedisReplica.prototype.connectSlave = function connectSlave() {
   if (!this.slaves) { return null; }
+  
+  var living_slaves = this.slaves.filter(function (slave) {
+    return ! RedisReplica._isDown("slave", slave);
+  });
+
+  if (living_slaves.length === 0) { return null; }
+
   var idx = Math.floor( Math.random() * this.slaves.length );
   var slave = this.slaves[idx];
+
   return this.createClient.call(null, slave.port, slave.ip, this.redisOptions);
 };
 
+
+/**
+ * Will connect to all living slaves.
+ * @return {Array} An array containing RedisClients for all living slaves. If no living slaves, returns [].
+ */
 RedisReplica.prototype.connectAllSlaves = function connectAllSlaves() {
   if (!this.slaves || !this.slaves.length) { return []; }
 
+  var living_slaves = this.slaves.filter(function (slave) {
+    return ! RedisReplica._isDown("slave", slave);
+  });
+
   var repl = this;
-  return this.slaves.map(function connect(slave) {
+  return living_slaves.map(function connect(slave) {
     return repl.createClient.call(null, slave.port, slave.ip, repl.redisOptions);
   });
 };
+
 
 module.exports = RedisReplica;
