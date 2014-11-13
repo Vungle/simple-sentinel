@@ -159,7 +159,7 @@ RedisReplica.prototype.connectAllSlaves = function connectAllSlaves() {
  */
 RedisReplica.prototype.toString = function toString() {
   var status_fmt = "%s:%d %s"
-    , out_fmt    = "[ RedisReplica %s: Master(%s), Slaves:(%s) ]"
+    , out_fmt    = "[ RedisReplica %s: Master:(%s), Slaves:(%s) ]"
     , master_str = "--:-- DOWN"
     , slaves_str = "";
   

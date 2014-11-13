@@ -30,8 +30,8 @@ var masters = {
   replica_d: null
 };
 
-// Listen for connection info to become ready:
-sentinel.on('ready', function (name, replica) {
+// Listen for connection info changes:
+sentinel.on('change', function (name, replica) {
   console.log("Just got connection info for Replica:", name);
   masters[name] = replica.connectMaster();
 });
@@ -61,14 +61,6 @@ Will create the structure, and start the process of connecting. This object is a
     - `outageRetryTimeout` (**Number**) is the number of milliseconds before trying again if ALL sentinels are down. If this number is negative, then we will simply emit an error instead of retrying. Default is 5000.
     - `refreshTimeout` (**Number**) is the number of milliseconds between attempts to fetch configurations from redis. Normally, we use events emitted to us through sentinel's pub/sub mechanism, but we always have this as a fallback should a message not make it to us. Default is 60000.
 
-##### Function: getRepl(name)
-
-Takes the string name of a Replica, and will return a `RedisReplica` object (see below). Will return `null` if we are not tracking that Replica.
-
-##### Function: getWatchedReplicaNames()
-
-Will return an array of strings representing the replicas that this `RedisSentinel` object is watching.
-
 ##### Event: "error"
 
 Emitted when there was an internal error, or if all redis-sentinels are down.
@@ -86,10 +78,9 @@ Has arguments: `(name, replica)`
 
 ##### Event: "event"
 
-Emitted when an important event has happened. This is mostly useful for logging.
+Emitted when an important event has happened. These are simply events that were passed to us through pub/sub in sentinel. Some may be omitted in certain cases (such as when switching from one sentinel to another), so this is mostly useful for logging.
 
-Has arguments: `(replica_name, event_type, event_message`
-- `replica_name` (**String**) the replica that experienced the event, or `null` if the redis-sentinel itself had an issue.
+Has arguments: `(event_type, event_message)`
 - `event_type` (**String**) is the event type.
 - `event_message` (**String**) describes what happened.
 

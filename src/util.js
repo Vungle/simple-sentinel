@@ -74,12 +74,44 @@ function timedCommand(client, timeout, cmd, opts, cb) {
 };
 
 
+/**
+ * Will build a simple logger. Will write to stdout IFF we were told to in the user configs.
+ * Arguments are the same format as for node util's format function, with the exception that
+ * all instances of Error with a 'stack' property are evaluated as that, and as a string
+ * otherwise.
+ */
+function buildLogger(namespace) {
+  namespace = String(namespace) + ":";
+  enabled = false;
+
+  var out = function _log() {
+    if ( ! enabled ) { return; }
+
+    var i, len = arguments.length;
+    for (i=0; i<len; i++) {
+      var arg = arguments[i];
+      if (arg instanceof Error) {
+        arguments[i] = (arg.stack) ? arg.stack : String(arg);
+      }
+    }
+    var str = util.format.apply(util, arguments);
+    console.log(namespace, str);
+  };
+
+  out.configure = function configure(options) {
+    enabled = !! (options.debugLogging);
+  };
+
+  return out;
+}
+
 // Now to put our own stuff in there:
 util._             = _;
 util.async         = require('async');
 util.parentRequire = parentRequire;
 util.shuffleArray  = shuffleArray;
 util.timedCommand  = timedCommand;
+util.buildLogger   = buildLogger;
 
 
 module.exports = util;
