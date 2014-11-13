@@ -59,6 +59,7 @@ Will create the structure, and start the process of connecting. This object is a
     - `timeout` (**Number**) is the connect timeout in milliseconds for connecting to a sentinel server. Default is 500.
     - `commandTimeout` (**Number**) is the maximum number of milliseconds that we'll wait for a command on this sentinel to return. Default is 1500.
     - `outageRetryTimeout` (**Number**) is the number of milliseconds before trying again if ALL sentinels are down. If this number is negative, then we will simply emit an error instead of retrying. Default is 5000.
+    - `refreshTimeout` (**Number**) is the number of milliseconds between attempts to fetch configurations from redis. Normally, we use events emitted to us through sentinel's pub/sub mechanism, but we always have this as a fallback should a message not make it to us. Default is 60000.
 
 ##### Function: getRepl(name)
 

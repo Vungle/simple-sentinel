@@ -1,3 +1,5 @@
+var util = require('./util');
+
 /** 
  * Represents a group of redis servers, or a Replica.
  *
@@ -21,6 +23,8 @@ function RedisReplica(name, createClient, options) {
  * @return {Boolean}        True IFF we are considering this link down.
  */
 RedisReplica._isDown = function _isDown(role, config) {
+  if (!config) { return true; }
+
   // We're using O_DOWN for masters, S_DOWN for slaves as being the "down" criterea.
   // There might be a better value, but this'll do for now...
   var look_for = (role === "master") ? "o_down" : "s_down";
@@ -146,6 +150,42 @@ RedisReplica.prototype.connectAllSlaves = function connectAllSlaves() {
   return living_slaves.map(function connect(slave) {
     return repl.createClient.call(null, slave.port, slave.ip, repl.redisOptions);
   });
+};
+
+
+/**
+ * Stringify the replica.
+ * @return {String} A descriptive string.
+ */
+RedisReplica.prototype.toString = function toString() {
+  var status_fmt = "%s:%d %s"
+    , out_fmt    = "[ RedisReplica %s: Master(%s), Slaves:(%s) ]"
+    , master_str = "--:-- DOWN"
+    , slaves_str = "";
+  
+  if (this.master) {
+    master_str = util.format(
+      status_fmt,
+      this.master.ip,
+      this.master.port,
+      RedisReplica._isDown("master", this.master) ? "DOWN" : "UP"
+    );
+  }
+
+  if (this.slaves && this.slaves.length) {
+    slaves_str = this.slaves
+      .map(function (slave) {
+        return util.format(
+          status_fmt,
+          slave.ip,
+          slave.port,
+          RedisReplica._isDown("slave", slave) ? "DOWN" : "UP"
+        );
+      })
+      .join(", ");
+  }
+
+  return util.format(out_fmt, this.name, master_str, slaves_str);
 };
 
 

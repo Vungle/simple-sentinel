@@ -1,5 +1,6 @@
 var events = require('events')
   , redis = require('redis')
+  , RedisReplica = require('./redisReplica')
   , util = require('./util');
 
 var client_redis = null;
@@ -15,20 +16,27 @@ function RedisSentinel(sentinels, options) {
 
   // Add in the things that will be asynchronously populated later:
   this.client = null;
+  this.connect_info = null;
   this.replicas = {};
+  this.refresh_timeout = undefined;
+
+  // States:
+  this.needs_refresh = false;
+  this.refresh_running = false;
 
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
 
   // Extend the default values with the custom parameters:
   var defaults = {
+    commandTimeout:     1500,
     createClient:       (client_redis && client_redis.createClient) || redis.createClient,
     debugLogging:       false,
+    outageRetryTimeout: 5000,
     redisOptions:       {},
-    watchedNames:       null,
+    refreshTimeout:     60000,
     timeout:            500,
-    commandTimeout:     1500,
-    outageRetryTimeout: 5000
+    watchedNames:       null,
   };
   this.options = util._.extend(defaults, options);
 
@@ -59,7 +67,18 @@ function RedisSentinel(sentinels, options) {
 
     // Else, we have a sentinel connection, so store it, and try to fetch configs:
     sentinel.client = client;
-    sentinel._loadConfigs();
+    sentinel._refreshConfigs(_startUpdateStream);
+  }
+
+  function _startUpdateStream(err) {
+    if (err) {
+      // Error doing stuff. Re-connect sentinel and try again:
+      sentinel._log("Error during config loading:", err);
+      sentinel._connectSentinel(_setupClient);
+      return;
+    }
+
+    // Else, we are ok. Open a streaming channel to the sentinel, and use that to force
   }
 }
 
@@ -93,14 +112,15 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
 
 /** 
  * Will take in the response from a "SENTINEL MASTERS" command, and return a parsed struct.
- * 
- * @param  {Array} result The response from SENTINEL MASTERS.
+ *
+ * @param  {String} role   The role of the server, like "Master". Only used for logging.
+ * @param  {Array}  result The response from SENTINEL MASTERS.
  * @return {Object}       An object like: {"name": {ip: "...", ...}, ...} if ok. null otherwise
  */
-RedisSentinel.prototype._parseMastersList = function _parseMastersList(result) {
-  var i, len, out = {};
+RedisSentinel.prototype._parseServerList = function _parseServerList(role, result) {
+  var i, len, out = [];
 
-  var ns = "Master list rejected:";
+  var ns = role + " list rejected:";
 
   if (!result || !Array.isArray(result)) {
     this._log(ns, "Bad input.");
@@ -145,17 +165,53 @@ RedisSentinel.prototype._parseMastersList = function _parseMastersList(result) {
       this._log(ns, "Row lacked a name property");
       return null;
     }
-
-    if (out.hasOwnProperty(parsed_row.name)) {
-      this._log(ns, "Duplicate rows with name:", parsed_row.name);
-      return null;
-    }
     
-    out[parsed_row.name] = parsed_row;
+    out.push(parsed_row);
   }
 
   return out;
 };
+
+
+/**
+ * Will build a lookup table for a list based on the "name" property of the contents.
+ * 
+ * @param  {Array} array An array of objects, such as those returned from _parseServerList()
+ * @return {Object}      A lookup table of objects in array from the name property to the elements.
+ *                       Returns null on failure or duplicates.
+ */
+RedisSentinel.prototype._buildLookup = function _buildLookup(array) {
+  if (!array) {
+    // Error probably happened in earlier parsing. Just fail w/o logging:
+    return null;
+  }
+
+  var ns = "Failed to build lookup:";
+
+  if (!Array.isArray(array)) {
+    this._log(ns, "Non-array provided");
+    return null;
+  }
+
+  var i, len = array.length, out = {};
+  for (i=0; i<len; i++) {
+    var item = array[i];
+    
+    if (!item.hasOwnProperty("name")) {
+      this._log(ns, "Item #", i, "has no name");
+      return null;
+    }
+    
+    if (out.hasOwnProperty(item.name)) {
+      this._log(ns, "Duplicate name in array:", item.name);
+    }
+    
+    out[item.name] = item;
+  }
+
+  return out;
+};
+
 
 /**
  * Extremely simple and basic validation of the INFO response for a sentinel:
@@ -227,11 +283,14 @@ RedisSentinel.prototype._log = function _log() {
 /**
  * Will try to connect to each item in the sentinels array, in order, until it is
  * successful.
- * 
- * @param  {Function} cb Called when done with args: (err, client)
  */
-RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
+RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
   var sentinel = this;
+
+  this._log("Starting sentinel connection...");
+
+  // Blank client and connection info, to be sure:
+  this.client = this.connect_info = null;
 
   // Make sure we are iterating over the sentinels in a random order:
   util.shuffleArray(this.sentinels);
@@ -264,7 +323,11 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
             return next();
           }
 
-          cb(null, client);
+          // Else, we're accepting it, so store connection string and continue
+          // into the refreshConfig logic:
+          sentinel.connect_info = conf;
+          sentinel.client = client;
+          sentinel._refreshConfigs();
         });
       }
 
@@ -284,7 +347,8 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
       // We made it through all endpoints. What do??
       if (sentinel.options.outageRetryTimeout < 0) {
         // Stop, and emit error:
-        return cb(new Error("Could not connect to a sentinel. *<:'O("));
+        sentinel.emit("error", new Error("Could not connect to a sentinel. *<:'O("));
+        return;
 
       } else {
         // Loop around and try again in a few seconds:
@@ -296,16 +360,59 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel(cb) {
 };
 
 
-RedisSentinel.prototype._loadConfigs = function _loadConfigs(cb) {
+RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndReconnect(err) {
+
+  // Log the error:
+  this._log("Error encountered:", err);
+
+  // Blank connection info:
+  this.connect_info = null;
+  
+  // Kill our redis clients:
+  if (this.client) { this.client.end(); }
+  this.client = null;
+
+  // Reset refresh variables:
+  this.needs_refresh = false;
+  this.refresh_running = false;
+  clearTimeout(this.refresh_timeout);
+  this.refresh_timeout = undefined;
+
+  // Trigger a re-connect:
+  this._connectSentinel();
+};
+
+
+RedisSentinel.prototype._refreshConfigs = function _refreshConfigs() {
   var sentinel = this;
 
-  this._timedCommand(this.client, "SENTINEL", ["masters"], function (err, res) {
-    if (err) { return cb(err); }
+  // If we're already doing a refresh, then flag that we need to do another and return:
+  if (this.refresh_running) {
+    this.needs_refresh = true;
+    return;
+  }
 
-    var all_masters     = sentinel._parseMastersList(res)
+  sentinel._log("Refreshing replica configurations...");
+
+  // Set the state vars:
+  this.needs_refresh = false;
+  this.refresh_running = true;
+
+  // We are running, which cancels any existing timeouts:
+  clearTimeout(this.refresh_timeout);
+  
+  // Fetch the masters, so that we can select the ones with server configs:
+  this._timedCommand(this.client, "SENTINEL", ["masters"], function (err, res) {
+    if (err) {
+      this._handleErrorAndReconnect(err);
+      return;
+    }
+
+    var all_masters     = sentinel._buildLookup(sentinel._parseServerList("Master", res))
       , tracked_names   = sentinel.options.watchedNames || Object.keys(all_masters)
       , tracked_masters = {};
 
+    // Select all masters that are in the list of watched names:
     tracked_names.forEach(function (name) {
       if ( !all_masters.hasOwnProperty(name) ) {
         sentinel._log("Warning: Replica name in watchedNames but not on Sentinel:", name);
@@ -313,13 +420,69 @@ RedisSentinel.prototype._loadConfigs = function _loadConfigs(cb) {
       }
       tracked_masters[name] = all_masters[name];
       if (!sentinel.replicas.hasOwnProperty(name)) {
-
+        sentinel.replicas[name] = new RedisReplica(name, sentinel.createClient, sentinel.redisOptions);
       }
     });
 
-    console.log(tracked_masters);
-    
-    return;
+    // Items may have been removed from tracked_names to tracked_masters, if the name isn't
+    // tracked by the sentinel:
+    tracked_names = Object.keys(tracked_masters);
+
+    // Now pull in all slave configurations:
+    var has_errored = false;
+    util.async.each(
+      tracked_names,
+      function fetchSlaves(name, done) {
+        sentinel._timedCommand(sentinel.client, "SENTINEL", ["slaves", name], function (err, slaves) {
+          // We have to maintain the 'has_errored' thing, since async will call the allDone function
+          // before all tasks have returned in case of error, which is very bad, but a documented
+          // "feature" of async. :-/
+          if (err || has_errored) { 
+            has_errored = true;
+            return done(err);
+          }
+
+          // Parse the slave data:
+          var parsed_slaves = sentinel._parseServerList("Slave", slaves);
+
+          var repl           = sentinel.replicas[name]
+            , master_changed = repl._loadMasterConfig(tracked_masters[name])
+            , slaves_changed = repl._loadSlaveConfigs(parsed_slaves)
+            , has_changed    = master_changed || slaves_changed;
+
+          // Emit the repl if things are different:
+          if (has_changed) {
+            sentinel._log("Change detected for:", name);
+            sentinel.emit('change', name, repl);
+          }
+
+          sentinel._log("Loaded data:", repl.toString());
+          done();
+        });
+      },
+      function allDone(err) {
+        if (err) {
+          this._handleErrorAndReconnect(err);
+          return;
+        }
+
+        // Ok, done running:
+        sentinel.refresh_running = false;
+
+        // Do we already have another refresh scheduled?
+        if (sentinel.needs_refresh) {
+          this._refreshConfigs();
+          return;
+        }
+
+        // Else, we should set a timeout and wait:
+        sentinel._log("All replicas handled");
+        sentinel.refresh_timeout = setTimeout(
+          sentinel._refreshConfigs.bind(sentinel),
+          sentinel.options.refreshTimeout
+        );
+      }
+    );
   });
 }
 
