@@ -42,9 +42,36 @@ function shuffleArray(arr) {
     arr[i] = arr[rnd];
     arr[rnd] = tmp;
   }
-  
+
   return arr;
 }
+
+
+/** 
+ * Will dispatch a Redis command that can time out.
+ * 
+ * @param  {RedisClient} client  The redis client to use.
+ * @param  {Number}      timeout The number of milliseconds to wait.
+ * @param  {String}      cmd     The command name.
+ * @param  {String}      opts    An array of options. Optional.
+ * @param  {Function}    cb      Called with (err, results)
+ */
+function timedCommand(client, timeout, cmd, opts, cb) {
+  if (!cb) {
+    cb = opts;
+    opts = [];
+  }
+
+  cb = _.once(cb);
+
+  var timeout_err = new Error("Command timed out");
+  var cmd_timeout = setTimeout( cb.bind(null, timeout_err), timeout );
+
+  client.send_command(cmd, opts, function () {
+    clearTimeout(cmd_timeout);
+    cb.apply(null, arguments);
+  });
+};
 
 
 // Now to put our own stuff in there:
@@ -52,6 +79,7 @@ util._             = _;
 util.async         = require('async');
 util.parentRequire = parentRequire;
 util.shuffleArray  = shuffleArray;
+util.timedCommand  = timedCommand;
 
 
 module.exports = util;

@@ -1,6 +1,7 @@
 var events = require('events')
   , redis = require('redis')
   , RedisReplica = require('./redisReplica')
+  , RedisWatcher = require('./redisWatcher')
   , util = require('./util');
 
 var client_redis = null;
@@ -16,6 +17,7 @@ function RedisSentinel(sentinels, options) {
 
   // Add in the things that will be asynchronously populated later:
   this.client = null;
+  this.watcher = null;
   this.connect_info = null;
   this.replicas = {};
   this.refresh_timeout = undefined;
@@ -233,32 +235,6 @@ RedisSentinel.prototype._isInfoResponseValid = function _isInfoResponseValid(inf
 };
 
 
-/** 
- * Will dispatch a Redis command that can time out.
- * 
- * @param  {RedisClient} client The redis client to use.
- * @param  {String}      cmd    The command name.
- * @param  {String}      opts   An array of options. Optional.
- * @param  {Function}    cb     Called with (err, results)
- */
-RedisSentinel.prototype._timedCommand = function _timedCommand(client, cmd, opts, cb) {
-  if (!cb) {
-    cb = opts;
-    opts = [];
-  }
-
-  cb = util._.once(cb);
-
-  var timeout_err = new Error("Command timed out");
-  var cmd_timeout = setTimeout( cb.bind(null, timeout_err), this.options.commandTimeout );
-
-  client.send_command(cmd, opts, function () {
-    clearTimeout(cmd_timeout);
-    cb.apply(null, arguments);
-  });
-};
-
-
 /**
  * A simple logging function. Will write to stdout IFF we were told to in the user configs.
  * Arguments are the same format as for node util's format function, with the exception that
@@ -311,7 +287,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
 
         sentinel._log("Successfully connected to %s:%d", conf.host, conf.port);
         
-        sentinel._timedCommand(client, "INFO", function (err, result) {
+        util.timedCommand(client, sentinel.options.commandTimeout, "INFO", function (err, result) {
           if (err) {
             sentinel._log("INFO failed:", err);
             client.end();
@@ -327,6 +303,22 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
           // into the refreshConfig logic:
           sentinel.connect_info = conf;
           sentinel.client = client;
+
+          // Connect to a streaming source:
+          sentinel.watcher = new RedisWatcher(
+            conf.host, conf.port,
+            sentinel.options.refreshTimeout,
+            sentinel.options.commandTimeout
+          );
+
+          sentinel.watcher.on('refresh', function () {
+            sentinel._log("Watcher recommends refresh");
+          });
+
+          sentinel.watcher.on('error', function (err) {
+            sentinel._log("Watcher error", err);
+          });
+
           sentinel._refreshConfigs();
         });
       }
@@ -353,7 +345,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
       } else {
         // Loop around and try again in a few seconds:
         sentinel._log("All sentinels down. Pausing before retry...");
-        setTimeout(sentinel._connectSentinel.bind(sentinel, cb), sentinel.options.outageRetryTimeout);
+        setTimeout(sentinel._connectSentinel.bind(sentinel), sentinel.options.outageRetryTimeout);
       }
     }
   );
@@ -370,7 +362,8 @@ RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndRecon
   
   // Kill our redis clients:
   if (this.client) { this.client.end(); }
-  this.client = null;
+  if (this.watcher) { this.watcher.kill(); }
+  this.client = this.watcher = null;
 
   // Reset refresh variables:
   this.needs_refresh = false;
@@ -386,6 +379,7 @@ RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndRecon
 RedisSentinel.prototype._refreshConfigs = function _refreshConfigs() {
   var sentinel = this;
 
+  var cmd_to = sentinel.options.commandTimeout;
   // If we're already doing a refresh, then flag that we need to do another and return:
   if (this.refresh_running) {
     this.needs_refresh = true;
@@ -402,9 +396,9 @@ RedisSentinel.prototype._refreshConfigs = function _refreshConfigs() {
   clearTimeout(this.refresh_timeout);
   
   // Fetch the masters, so that we can select the ones with server configs:
-  this._timedCommand(this.client, "SENTINEL", ["masters"], function (err, res) {
+  util.timedCommand(this.client, cmd_to, "SENTINEL", ["masters"], function (err, res) {
     if (err) {
-      this._handleErrorAndReconnect(err);
+      sentinel._handleErrorAndReconnect(err);
       return;
     }
 
@@ -433,7 +427,7 @@ RedisSentinel.prototype._refreshConfigs = function _refreshConfigs() {
     util.async.each(
       tracked_names,
       function fetchSlaves(name, done) {
-        sentinel._timedCommand(sentinel.client, "SENTINEL", ["slaves", name], function (err, slaves) {
+        util.timedCommand(sentinel.client, cmd_to, "SENTINEL", ["slaves", name], function (err, slaves) {
           // We have to maintain the 'has_errored' thing, since async will call the allDone function
           // before all tasks have returned in case of error, which is very bad, but a documented
           // "feature" of async. :-/
@@ -462,7 +456,7 @@ RedisSentinel.prototype._refreshConfigs = function _refreshConfigs() {
       },
       function allDone(err) {
         if (err) {
-          this._handleErrorAndReconnect(err);
+          sentinel._handleErrorAndReconnect(err);
           return;
         }
 
