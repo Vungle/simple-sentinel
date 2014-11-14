@@ -188,6 +188,7 @@ RedisConfigFetcher.prototype._buildLookup = function _buildLookup(array) {
     
     if (out.hasOwnProperty(item.name)) {
       this._log(ns, "Duplicate name in array:", item.name);
+      return null;
     }
     
     out[item.name] = item;

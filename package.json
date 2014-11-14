@@ -7,7 +7,7 @@
     "Chrissy Donovan <christine.n.donovan@gmail.com>"
   ],
   "scripts": {
-    "test": "mocha"
+    "test": "mocha -R spec --check-leaks tests/*_test.js"
   },
   "main": "src/index.js",
   "repository": {
