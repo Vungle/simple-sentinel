@@ -4,15 +4,12 @@ var RedisConfigFetcher = require('../src/redisConfigFetcher')
   , expect             = require('expect');
 
 
-function FakeClient() {
-
-}
-
+function FakeClient() {}
 util.inherits(FakeClient, EventEmitter);
 
 
-describe("RedisConfigFetcher", function () {
-  describe("during initialization", function () {
+describe.only("RedisConfigFetcher", function () {
+  describe.skip("during initialization", function () {
     it("emits 'error' on connection error", function (done) {
       var client = new FakeClient();
       var rcf = new RedisConfigFetcher('localhost', 6379, {
@@ -85,13 +82,82 @@ describe("RedisConfigFetcher", function () {
   });
 
   describe("when parsing a server list", function () {
-    it("rejects bad types");
-    it("rejects odd number of items in list");
-    it("rejects dupe properties");
-    it("rejects non-numeric ports");
-    it("rejects missing name");
-    it("parses flags as array");
-    it("parses multiple rows");
+    
+    var rcf = new RedisConfigFetcher("localhost", 6379, { _testClient: new FakeClient() });
+    rcf._log = function () {
+      last_log = [].slice.call(arguments, 0).join(" ");
+    }
+
+    var last_log = null;
+    beforeEach(function () {
+      last_log = null;
+    });
+
+    it("rejects bad types", function () {
+      var res = rcf._parseServerList("Master", null);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Master list rejected: Bad input");
+    });
+
+    it("rejects odd number of items in list", function () {
+      var res = rcf._parseServerList("Master", [["name", "derp", "foobar"]]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Master list rejected: Malformed row");
+    });
+
+    it("rejects dupe properties", function () {
+      var res = rcf._parseServerList("Master", [["name", "derp", "hello", "world", "name", "not derp"]]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Master list rejected: Row had duplicate property");
+    });
+
+    it("rejects non-numeric ports", function () {
+      var res = rcf._parseServerList("Master", [["name", "derp", "port", "foobar", "thing", "blahblah"]]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Master list rejected: Row has a non-numeric port");
+    });
+
+    it("rejects missing name", function () {
+      var res = rcf._parseServerList("Master", [["port", "1234", "thing", "blahblah"]]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Master list rejected: Row lacked a name property");
+    });
+
+    it("parses ports as numbers", function () {
+      var res = rcf._parseServerList("Master", [["name", "derp", "port", "1234", "thing", "blahblah"]]);
+      expect(!!res).toBe(true);
+      expect(res[0].port).toBe(1234);
+      expect(last_log).toBe(null);
+    });
+
+    it("parses flags as array", function () {
+      var res = rcf._parseServerList("Master", [["name", "derp", "flags", "master,s_down,o_down", "thing", "blahblah"]]);
+      expect(!!res).toBe(true);
+      expect(res[0].flags).toBeAn(Array);
+      expect(res[0].flags).toContain("master");
+      expect(res[0].flags).toContain("s_down");
+      expect(res[0].flags).toContain("o_down");
+      expect(last_log).toBe(null);
+    });
+
+    it("parses multiple rows", function () {
+      var res = rcf._parseServerList("Master", [
+        ["name", "herp", "ip", "127.0.0.1", "flags", "master,s_down,o_down"],
+        ["name", "derp", "ip", "127.0.0.2", "flags", "master"]
+      ]);
+      expect(!!res).toBe(true);
+      expect(res[0].name).toBe("herp");
+      expect(res[1].name).toBe("derp");
+      expect(res[0].ip).toBe("127.0.0.1");
+      expect(res[1].ip).toBe("127.0.0.2");
+      expect(res[0].flags).toBeAn(Array);
+      expect(res[1].flags).toBeAn(Array);
+      expect(res[0].flags).toContain("master");
+      expect(res[0].flags).toContain("s_down");
+      expect(res[0].flags).toContain("o_down");
+      expect(res[1].flags).toContain("master");
+      expect(last_log).toBe(null);
+    });
   });
 
   describe("when building a lookup", function () {

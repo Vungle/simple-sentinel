@@ -107,7 +107,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
   var ns = role + " list rejected:";
 
   if (!result || !Array.isArray(result)) {
-    this._log(ns, "Bad input.");
+    this._log(ns, "Bad input");
     return null;
   }
   
@@ -129,9 +129,8 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
 
       // Special-case for port entries:
       if (key === "port") {
-        try {
-          value = parseInt(value, 10);
-        } catch (ex) {
+        value = parseInt(value, 10);
+        if (isNaN(value)) {
           this._log(ns, "Row has a non-numeric port");
           return null;
         }
