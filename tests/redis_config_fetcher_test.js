@@ -161,10 +161,51 @@ describe.only("RedisConfigFetcher", function () {
   });
 
   describe("when building a lookup", function () {
-    it("fails on non-arrays");
-    it("fails when something lacks a name");
-    it("fails with duplicate names");
-    it("works when everything is ok");
+
+    var rcf = new RedisConfigFetcher("localhost", 6379, { _testClient: new FakeClient() });
+    rcf._log = function () {
+      last_log = [].slice.call(arguments, 0).join(" ");
+    }
+
+    var last_log = null;
+    beforeEach(function () {
+      last_log = null;
+    });
+
+    it("passes nulls along without logging", function () {
+      var res = rcf._buildLookup(null);
+      expect(res).toBe(null);
+      expect(last_log).toBe(null);
+    });
+
+    it("fails on non-arrays", function () {
+      var res = rcf._buildLookup({a: "lol"});
+      expect(res).toBe(null);
+      expect(last_log).toBe("Failed to build lookup: Non-array provided");
+    });
+
+    it("fails when something lacks a name", function () {
+      var res = rcf._buildLookup([{a: "lol"}]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Failed to build lookup: Item # 0 has no name");
+    });
+
+    it("fails with duplicate names", function () {
+      var res = rcf._buildLookup([{name: "lol"}, {name: "derp"}, {name: "lol"}]);
+      expect(res).toBe(null);
+      expect(last_log).toBe("Failed to build lookup: Duplicate name in array: lol");
+    });
+
+    it("works when everything is ok", function () {
+      var res = rcf._buildLookup([{name: "lol", ip: "123.45.67.89"}, {name: "derp", ip: "98.76.54.32"}]);
+      expect(!!res).toBe(true);
+      expect(res).toBeAn(Object);
+      expect(!!res.lol).toBe(true);
+      expect(!!res.derp).toBe(true);
+      expect(res.lol.ip).toBe("123.45.67.89");
+      expect(res.derp.ip).toBe("98.76.54.32");
+      expect(last_log).toBe(null);
+    });
   });
 
   describe("when updating configs", function () {
