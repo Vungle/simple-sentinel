@@ -51,7 +51,9 @@ function RedisWatcher(host, port, config) {
   };
 
   // Hook ourselves into a redis client:
-  this.client = redis.createClient(port, host, redis_config)
+  this.client = config._testClient || redis.createClient(port, host, redis_config);
+
+  this.client
     .on  ('error', this._handleClientError.bind(this))
     .on  ('end',   this._handleClientHangup.bind(this))
     .once('ready', this._handleConnectReady.bind(this));
@@ -79,7 +81,7 @@ RedisWatcher.prototype.kill = function (err) {
   this.client.end();
   this.client.removeAllListeners();
   clearTimeout(this.timeout);
-  if (err) { this.emit("error", err); }
+  this.emit("error", err);
   this._log("Closed connection to %s:%d", this.host, this.port);
 }
 

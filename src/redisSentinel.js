@@ -42,6 +42,9 @@ function RedisSentinel(sentinels, options) {
 
   this.options = util._.extend(defaults, options);
   
+  // Make sure that the outside can't inject a test client:
+  delete this.options._testClient;
+
   this._log.configure(this.options);
 
   this._log("Has client redis:", !!client_redis);
