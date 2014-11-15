@@ -38,7 +38,7 @@ function RedisConfigFetcher(host, port, config) {
     no_ready_check:  1               // Don't do a ready check, since we already do that
   };
 
-  var client = this.client = redis.createClient(port, host, redis_config);
+  var client = this.client = config._testClient || redis.createClient(port, host, redis_config);
   
   client.on('error', function (err) {
     fetcher.kill(err);
