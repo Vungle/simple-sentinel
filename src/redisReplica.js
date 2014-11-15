@@ -10,7 +10,7 @@ var util = require('./util');
 function RedisReplica(name, createClient, options) {
   this.name   = name;
   this.master = null;
-  this.slaves = null;
+  this.slaves = [];
   this.createClient = createClient;
   this.redisOptions = options;
 }
@@ -40,15 +40,19 @@ RedisReplica._isDown = function _isDown(role, config) {
  * @return {Boolean}       True IFF the provided configurations are different to the one currently stored.
  */
 RedisReplica.prototype._loadMasterConfig = function _loadConfigs(master) {
+  
   var old_host = this.master && this.master.ip
     , old_port = this.master && this.master.port
     , old_dead = RedisReplica._isDown("master", this.master)
-    , has_changed = (old_host !== master.ip)
-                 || (old_port !== master.port)
-                 || (old_dead !== RedisReplica._isDown("master", master));
+    , new_host = master && master.ip
+    , new_port = master && master.port
+    , new_dead = RedisReplica._isDown("master", master)
+    , has_changed = (old_host !== new_host)
+                 || (old_port !== new_port)
+                 || (old_dead !== new_dead);
   
-  // Reject if the name changed:
-  if (master.name !== this.name) { throw new Error("Config loaded into wrong Replica!"); }
+  // Reject if the name changed and we have a non-null master config:
+  if (master && master.name !== this.name) { throw new Error("Config loaded into wrong Replica!"); }
 
   this.master = master;
 
@@ -57,6 +61,8 @@ RedisReplica.prototype._loadMasterConfig = function _loadConfigs(master) {
 
 
 RedisReplica.prototype._loadSlaveConfigs = function _loadSlaveConfigs(slaves) {
+  slaves = slaves || [];
+
   // Special case: Different number of slaves === for sure something changed:
   if (!this.slaves || this.slaves.length !== slaves.length) {
     this.slaves = slaves;

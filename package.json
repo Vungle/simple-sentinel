@@ -28,7 +28,8 @@
     "redis": "0.12.1"
   },
   "devDependencies": {
-    "mocha": "2.0.1"
+    "mocha": "2.0.1",
+    "expect": "1.0.2"
   },
   "private": true,
   "license": "MIT"
