@@ -62,7 +62,7 @@ function RedisConfigFetcher(host, port, config) {
 
       if (!RedisConfigFetcher._isInfoResponseValid(result)) {
         fetcher._log("Invalid response from sentinel");
-        return fetcher.kill();
+        return fetcher.kill(new Error("Invalid response"));
       }
 
       fetcher.emit('connected');
