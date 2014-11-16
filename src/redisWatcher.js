@@ -81,6 +81,7 @@ RedisWatcher.prototype.kill = function (err) {
   this.client.end();
   this.client.removeAllListeners();
   clearTimeout(this.timeout);
+  this.timeout = undefined;
   this.emit("error", err);
   this._log("Closed connection to %s:%d", this.host, this.port);
 }
@@ -124,6 +125,8 @@ RedisWatcher.prototype._handleConnectReady = function _handleConnectReady() {
 
 
 RedisWatcher.prototype._resetTimer = function _resetTimer() {
+  if (this.finalized) { return; }
+
   var watcher = this;
 
   clearTimeout(this.timeout);

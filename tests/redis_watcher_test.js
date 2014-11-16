@@ -104,4 +104,40 @@ describe("RedisWatcher", function () {
 
     fake_client.emit('end');
   });
+
+  it("is useless after kill", function () {
+    var is_dead = false;
+    var fake_client = new FakeClient();
+    fake_client.end = function () {
+      if (is_dead) { throw new Error("end() called twice"); }
+      is_dead = true;
+    };
+    fake_client.subscribe = function () {
+      if (is_dead) { throw new Error("subscribe after death"); }
+    };
+
+    var w = new RedisWatcher("localhost", 6379, {
+      _testClient: fake_client,
+      refreshTimeout: 500
+    });
+
+    var times_emitted = 0;
+    w.on('error', function () {
+      if (++times_emitted !== 1) {
+        throw new Error("Multiple emits");
+      }
+    })
+
+    w.kill();
+
+    // Hit the various endpoints, making sure things don't happen:
+    w.kill();
+    w._handleClientError(new Error());
+    w._handleClientHangup();
+    w._handleConnectReady();
+    w._resetTimer();
+    expect(w.timeout).toBe(undefined);
+
+    expect(is_dead).toBe(true);
+  });
 });
