@@ -1,4 +1,4 @@
-var RedisWatcher = require('../src/RedisWatcher')
+var RedisWatcher = require('../src/redisWatcher')
   , EventEmitter = require('events').EventEmitter
   , util = require('../src/util')
   , expect = require('expect');

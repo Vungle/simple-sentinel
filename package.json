@@ -7,7 +7,8 @@
     "Chrissy Donovan <christine.n.donovan@gmail.com>"
   ],
   "scripts": {
-    "test": "mocha -R spec --check-leaks tests/*_test.js"
+    "test": "mocha -R spec --check-leaks tests/*_test.js",
+    "coverage": "istanbul cover _mocha -- -R spec tests/*_test.js"
   },
   "main": "src/index.js",
   "repository": {
@@ -29,7 +30,8 @@
   },
   "devDependencies": {
     "mocha": "2.0.1",
-    "expect": "1.0.2"
+    "expect": "1.0.2",
+    "istanbul" :  "0.3.2"
   },
   "private": true,
   "license": "MIT"

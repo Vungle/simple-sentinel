@@ -1,4 +1,4 @@
-var RedisReplica = require('../src/RedisReplica')
+var RedisReplica = require('../src/redisReplica')
   , expect = require('expect');
 
 
