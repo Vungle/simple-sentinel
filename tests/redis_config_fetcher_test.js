@@ -5,7 +5,10 @@ var RedisConfigFetcher = require('../src/redisConfigFetcher')
 
 
 function FakeClient() {
-  this.send_command = function () {};
+  this.send_command = function (cmd, args, cb) {
+    if (!this._send_command) { return; }
+    process.nextTick(this._send_command.bind(this, cmd, args, cb));
+  };
   this.end = function () {};
 }
 util.inherits(FakeClient, EventEmitter);
@@ -89,6 +92,7 @@ describe("RedisConfigFetcher", function () {
       });
       rcf.on('error', function (err) {
         expect(err.message).toMatch(/timed out/i);
+        expect(err.message).toMatch(/INFO/i);
         done();
       });
       client.emit('ready');
@@ -276,10 +280,224 @@ describe("RedisConfigFetcher", function () {
   });
 
   describe("when updating configs", function () {
-    it("emits 'error' when timeout");
-    it("emits 'error' when bad results from masters command");
-    it("emits 'error' when bad results from slaves command");
-    it("emits 'config' with correct values");
-    it("runs one update at a time");
+
+    var masters_results = [
+      ["name", "foo", "ip", "10.0.0.1", "port", "6379", "flags", "master,s_down"]
+    ];
+
+    var slaves_results = [
+      ["name", "10.0.0.2:6379", "ip", "10.0.0.2", "port", "6379", "flags", "slave"]
+    ];
+
+    function validateResults(name, master, slaves) {
+      expect(name).toBe("foo");
+      expect(master.name).toBe("foo");
+      expect(master.ip).toBe("10.0.0.1");
+      expect(master.port).toBe(6379);
+      expect(master.flags).toBeAn(Array);
+      expect(slaves).toBeAn(Array);
+      expect(slaves[0].ip).toBe("10.0.0.2");
+      expect(slaves[0].port).toBe(6379);
+      expect(slaves[0].flags).toBeAn(Array);
+    }
+
+
+    it("emits 'error' when timeout from masters command", function (done) {
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('error', function (err) {
+        expect(err.message).toMatch(/timed out/i);
+        expect(err.message).toMatch(/sentinel masters/i);
+        done();
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
+    it("emits 'error' when timeout from slaves command", function (done) {
+
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          if (args[0].toLowerCase() === "masters") {
+            return cb(null, masters_results);
+          }
+        }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('error', function (err) {
+        expect(err.message).toMatch(/timed out/i);
+        expect(err.message).toMatch(/sentinel slaves foo/i);
+        done();
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
+    it("emits 'error' when bad results from masters command", function (done) {
+
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          if (args[0].toLowerCase() === "masters") {
+            return cb(null, [["ip", "123.45.6.7"]]);
+          }
+        }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('error', function (err) {
+        expect(err.message).toMatch(/parsing master/i);
+        done();
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
+    it("emits 'error' when bad results from slaves command", function (done) {
+
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          switch(args[0].toLowerCase()) {
+            case "masters": return cb(null, masters_results);
+            case "slaves":  return cb(null, [["ip", "not.an.ip.address"]]);
+          }
+        }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('error', function (err) {
+        expect(err.message).toMatch(/parsing slave/i);
+        done();
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
+    it("emits 'config' with correct values", function (done) {
+
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          switch(args[0].toLowerCase()) {
+            case "masters": return cb(null, masters_results);
+            case "slaves":  return cb(null, slaves_results);
+          }
+        }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('config', function (name, master, slaves) {
+        validateResults(name, master, slaves);
+        done();
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
+    it("runs one update at a time", function (done) {
+
+      var client = new FakeClient();
+
+      // A command starts with the MASTERS command, and ends with the CONFIG message.
+      // Just make sure that we don't do things out-of-order:
+      
+      // Do this 10 times
+      var cmd_running = false;
+      var cmd_count = 0;
+
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          switch(args[0].toLowerCase()) {
+            case "masters": 
+              if (++cmd_count > 10) { throw new Error("Update Configs was run too many times"); }
+              if (cmd_running     ) { throw new Error("Update Configs ran while another one was going"); }
+              cmd_running = true;
+              if (cmd_count <= 9) { rcf.updateConfigs(); }
+              return cb(null, masters_results);
+            case "slaves":
+              if (cmd_count <= 9) { rcf.updateConfigs(); }
+              return cb(null, slaves_results);
+          }
+        }
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50
+      });
+      
+      rcf.on('config', function (name, master, slaves) {
+        if (!cmd_running) { throw new Error("Update Configs wasn't running, and yet finished"); }
+        cmd_running = false;
+        validateResults(name, master, slaves);
+        if (cmd_count == 10) { return done(); }
+      });
+
+      rcf.on('connected', function () {
+        // Try to kick off 3, just for giggles.
+        rcf.updateConfigs();
+        rcf.updateConfigs();
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
   });
 });

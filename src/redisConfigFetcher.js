@@ -244,7 +244,7 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
 
     // Fetch all masters as a lookup from name => parsed config object.
     var all_masters = fetcher._buildLookup(fetcher._parseServerList("Master", res));
-    if (!all_masters) { return fetcher.kill(); }
+    if (!all_masters) { return fetcher.kill(new Error("Parsing master list failed")); }
 
     // Get the list of watched replicas, and select only those ones from the master list:
     var tracked_names   = fetcher.config.watchedNames || Object.keys(all_masters)
@@ -275,7 +275,7 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
 
           // Parse the slave data:
           var parsed_slaves = fetcher._parseServerList("Slave", slaves);
-          if (!parsed_slaves) { return fetcher.kill(); }
+          if (!parsed_slaves) { return fetcher.kill(new Error("Parsing slave list failed")); }
 
           // Pass this along to the outside:
           fetcher.emit('config', name, tracked_masters[name], parsed_slaves);
@@ -292,7 +292,7 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
 
         // Do we already have another refresh scheduled?
         if (fetcher.needs_another) {
-          return fetcher.updateConfigs();
+          return process.nextTick(fetcher.updateConfigs.bind(fetcher));
         }
       }
     );

@@ -64,7 +64,8 @@ function timedCommand(client, timeout, cmd, opts, cb) {
 
   cb = _.once(cb);
 
-  var timeout_err = new Error("Command timed out");
+  var cmd_str = util.format("%s %s", cmd, opts.join(" "));
+  var timeout_err = new Error("Command timed out: " + cmd_str);
   var cmd_timeout = setTimeout( cb.bind(null, timeout_err), timeout );
 
   client.send_command(cmd, opts, function () {
