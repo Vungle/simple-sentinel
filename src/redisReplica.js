@@ -126,7 +126,7 @@ RedisReplica.prototype.connectMaster = function connectMaster() {
  * @return {RedisClient} The RedisClient for a random living slave, or null if all slaves are down.
  */
 RedisReplica.prototype.connectSlave = function connectSlave() {
-  if (!this.slaves) { return null; }
+  if (!this.slaves || ! this.slaves.length) { return null; }
   
   var living_slaves = this.slaves.filter(function (slave) {
     return ! RedisReplica._isDown("slave", slave);
@@ -134,8 +134,8 @@ RedisReplica.prototype.connectSlave = function connectSlave() {
 
   if (living_slaves.length === 0) { return null; }
 
-  var idx = Math.floor( Math.random() * this.slaves.length );
-  var slave = this.slaves[idx];
+  var idx = Math.floor( Math.random() * living_slaves.length );
+  var slave = living_slaves[idx];
 
   return this.createClient.call(null, slave.port, slave.ip, this.redisOptions);
 };
