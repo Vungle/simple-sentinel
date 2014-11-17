@@ -37,6 +37,7 @@ function RedisSentinel(sentinels, options) {
     createClient:       (client_redis && client_redis.createClient) || redis.createClient,
     debugLogging:       false,
     outageRetryTimeout: 5000,
+    randomizeSentinels: true,
     redisOptions:       {},
     refreshTimeout:     60000,
     timeout:            500,
@@ -50,7 +51,7 @@ function RedisSentinel(sentinels, options) {
 
   this._log.configure(this.options);
 
-  this._log("Has client redis:", !!client_redis);
+  this._log("Initialization started. Has client redis:", !!client_redis);
 
   // Store connection info for all the sentinels:
   this.sentinels = sentinels.map(function (conf) {
@@ -112,7 +113,9 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
   this._log("Starting sentinel connection...");
 
   // Make sure we are iterating over the sentinels in a random order:
-  util.shuffleArray(this.sentinels);
+  if (this.options.randomizeSentinels) {
+    util.shuffleArray(this.sentinels);
+  }
 
   // Try them all!
   util.async.forEachSeries(
@@ -213,12 +216,14 @@ RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndRecon
 
 RedisSentinel.prototype.kill = function kill() {
   if (this.terminated) { return; }
+  this.terminated = true;
+
+  this._log("Termination triggered from outside");
 
   // Kill our redis clients:
   if (this.fetcher) { this.fetcher.kill(); }
   if (this.watcher) { this.watcher.kill(); }
   this.fetcher = this.watcher = null;
-  this.terminated = true;
 };
 
 

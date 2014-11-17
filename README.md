@@ -47,15 +47,16 @@ This represents a connection to a cluster of redis-sentinels. It is an EventEmit
 
 Will create the structure, and start the process of connecting.
 
-- `sentinels` is an Array of objects, each with connection info to a single redis-sentinel. These objects should contain:
-    - `host` is the hostname to connect to.
-    - `port` is the port to connect to. Default: 26379.
+- `sentinels` is an Array of objects, each with connection info for a single redis-sentinel. These objects should contain:
+    - `host` (**String**) is the hostname to connect to.
+    - `port` (**Number**) is the port to connect to. Default: 26379.
 
 - `config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
     - `commandTimeout` (**Number**) is the maximum number of milliseconds that we'll wait for a command on this sentinel to return. Default is 1500.
     - `createClient` (**Function**) is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require the [node-redis](https://github.com/mranney/node_redis) library from the scope of your project automagically, but if you are wanting to do something more advanced, then you can set this manually. The function will be called with the arguments: `(port, host, options)`.
     - `debugLogging` (**Boolean**) is `true` if you want to see the noisy debug log. Default is `false`.
     - `outageRetryTimeout` (**Number**) is the number of milliseconds before trying again if ALL sentinels are down. If this number is negative, then we will simply emit an error instead of retrying. Default is 5000.
+    - `randomizeSentinels` (**Boolean**) indicates whether the sentinels list should be shuffled before attempting connections. Default is true.
     - `redisOptions` (**Object**) is the object that is passed to createClient as options. Default is `{}`.
     - `refreshTimeout` (**Number**) is the number of milliseconds between attempts to fetch configurations from redis. Normally, we use events emitted to us through sentinel's pub/sub mechanism, but we always have this as a fallback should a message not make it to us. Default is 60000.
     - `timeout` (**Number**) is the connect timeout in milliseconds for connecting to a sentinel server. Default is 500.

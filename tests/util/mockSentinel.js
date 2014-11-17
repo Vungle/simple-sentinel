@@ -84,7 +84,14 @@ function MockSentinel() {
           break;
 
         case 'subscribe':
-          subscribed_on = subscribed_on.concat(cmd.slice(1));
+          var new_channels = cmd.slice(1);
+          subscribed_on = subscribed_on.concat(new_channels);
+          var response = new_channels
+            .map(function (ch, idx) {
+              return "*3\r\n" + "$" + ch.length + "\r\n" + ch + "\r\n:" + (idx+1) + "\r\n";
+            })
+            .join("");
+          socket.write(response);
           break;
 
         case 'sentinel':
@@ -185,10 +192,11 @@ MockSentinel.prototype.start = function (cb) {
   });
 };
 
-MockSentinel.prototype.kill = function () {
-  if (!this.was_started) { return; }
+MockSentinel.prototype.kill = function (cb) {
+  if (!this.was_started) { return cb && cb(); }
   this.emit('suicide');
-  this.server.close();
+  this.was_started = false;
+  this.server.close(cb);
 };
 
 MockSentinel.prototype.sendEvent = function (name, msg) {

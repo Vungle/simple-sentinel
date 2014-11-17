@@ -85,6 +85,8 @@ describe("RedisSentinel", function () {
 
   describe("when connecting", function () {
     
+    var DEBUG_LOGGING = false;
+
     var mocks = [];
     var sentinel;
 
@@ -118,18 +120,19 @@ describe("RedisSentinel", function () {
       mocks[0]
         .setInfo('sentinel')
         .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
-        .addSlave("main", {ip: "10.0.1.1", port: 6379, isDown: false});
+        .addSlave ("main", {ip: "10.0.1.1", port: 6379, isDown: false});
 
-      startNMocks(1, function (err, port) {
+      startNMocks(1, function (err, ports) {
         if (err) { return done(err); }
         
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
-          createClient: testCreateClient
+          createClient: testCreateClient,
+          debugLogging: DEBUG_LOGGING
         };
 
-        sentinel = new RedisSentinel([{host:"127.0.0.1", port: port}], s_conf);
+        sentinel = new RedisSentinel([{host:"127.0.0.1", port: ports[0]}], s_conf);
         sentinel.on('change', function (name, repl) {
           expect(name).toBe("main");
           expect(repl.connectMaster()).toBe("10.0.0.1:6379 {}");
@@ -139,9 +142,123 @@ describe("RedisSentinel", function () {
       });
     });
 
-    it("will dodge bad connections");
-    it("will dodge timeouts");
-    it("will dodge non-sentinels");
+    it("will dodge bad connections", function (done) {
+      this.timeout(2000);
+
+      mocks[1]
+        .setInfo('sentinel')
+        .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
+        .addSlave ("main", {ip: "10.0.1.1", port: 6379, isDown: false});
+
+      startNMocks(2, function (err, ports) {
+        if (err) { return done(err); }
+        
+        // Kill the first server fast, but keep using its port. That way, the connection gets refused:
+        mocks[0].kill(function (err) {
+          if (err) { return done(err); }
+          
+          // Try a connection?
+          var s_conf = {
+            outageRetryTimeout: -1,
+            createClient: testCreateClient,
+            randomizeSentinels: false,
+            debugLogging: DEBUG_LOGGING,
+            timeout: 100
+          };
+
+          var s_list = [
+            {host:"127.0.0.1", port: ports[0]},
+            {host:"127.0.0.1", port: ports[1]}
+          ];
+
+          sentinel = new RedisSentinel(s_list, s_conf);
+          sentinel.on('change', function (name, repl) {
+            expect(name).toBe("main");
+            expect(repl.connectMaster()).toBe("10.0.0.1:6379 {}");
+            expect(repl.connectSlave()).toBe("10.0.1.1:6379 {}");
+            done();
+          });
+        });
+      });
+    });
+
+    it("will dodge timeouts", function (done) {
+      this.timeout(1000);
+
+      mocks[1]
+        .setInfo('sentinel')
+        .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
+        .addSlave ("main", {ip: "10.0.1.1", port: 6379, isDown: false});
+
+      startNMocks(2, function (err, ports) {
+        if (err) { return done(err); }
+          
+        // Try a connection?
+        var s_conf = {
+          outageRetryTimeout: -1,
+          createClient: testCreateClient,
+          randomizeSentinels: false,
+          debugLogging: DEBUG_LOGGING,
+          commandTimeout: 250,
+          timeout: 100
+        };
+
+        // We use MockSentinel 0 because it'll timeout on the INFO command:
+        
+        var s_list = [
+          {host:"127.0.0.1", port: ports[0]},
+          {host:"127.0.0.1", port: ports[1]}
+        ];
+
+        sentinel = new RedisSentinel(s_list, s_conf);
+        sentinel.on('change', function (name, repl) {
+          expect(name).toBe("main");
+          expect(repl.connectMaster()).toBe("10.0.0.1:6379 {}");
+          expect(repl.connectSlave()).toBe("10.0.1.1:6379 {}");
+          done();
+        });
+      });
+    });
+
+    it("will dodge non-sentinels", function (done) {
+      this.timeout(1000);
+
+      mocks[0]
+        .setInfo('normal');
+
+      mocks[1]
+        .setInfo('sentinel')
+        .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
+        .addSlave ("main", {ip: "10.0.1.1", port: 6379, isDown: false});
+
+      startNMocks(2, function (err, ports) {
+        if (err) { return done(err); }
+          
+        // Try a connection?
+        var s_conf = {
+          outageRetryTimeout: -1,
+          createClient: testCreateClient,
+          randomizeSentinels: false,
+          debugLogging: DEBUG_LOGGING,
+          commandTimeout: 250,
+          timeout: 100
+        };
+        
+        var s_list = [
+          {host:"127.0.0.1", port: ports[0]},
+          {host:"127.0.0.1", port: ports[1]}
+        ];
+
+        sentinel = new RedisSentinel(s_list, s_conf);
+        sentinel.on('change', function (name, repl) {
+          expect(name).toBe("main");
+          expect(repl.connectMaster()).toBe("10.0.0.1:6379 {}");
+          expect(repl.connectSlave()).toBe("10.0.1.1:6379 {}");
+          done();
+        });
+      });
+    });
+
     it("will retry if so configured");
     it("will error if so configured");
     it("will find a sentinel server");
