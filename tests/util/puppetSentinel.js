@@ -63,6 +63,7 @@ function PuppetSentinel() {
   this.info = null;
   this.masters = {};
   this.slaves = {};
+  this.was_started = false;
 
   this.server = net.createServer(function (socket) {
     
@@ -176,6 +177,7 @@ PuppetSentinel.prototype.addSlave = function (name, obj) {
 
 PuppetSentinel.prototype.start = function (cb) {
   var server = this.server;
+  this.was_started = true;
   // Listen on random port, but only respond to localhost:
   server.listen(0, '127.0.0.1', function () {
     var addr = server.address();
@@ -184,6 +186,7 @@ PuppetSentinel.prototype.start = function (cb) {
 };
 
 PuppetSentinel.prototype.kill = function () {
+  if (!this.was_started) { return; }
   this.emit('suicide');
   this.server.close();
 };

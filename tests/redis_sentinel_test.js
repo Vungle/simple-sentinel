@@ -1,5 +1,7 @@
 var RedisSentinel_lib = require('../src/redisSentinel')
   , RedisSentinel = RedisSentinel_lib.RedisSentinel
+  , PuppetSentinel = require('./util/puppetSentinel')
+  , async = require('async')
   , expect = require('expect');
 
 describe("RedisSentinel", function () {
@@ -83,13 +85,12 @@ describe("RedisSentinel", function () {
 
   describe("when connecting", function () {
     
-    var PuppetSentinel = require('./util/puppetSentinel');
     var puppets = [];
     var sentinel;
 
     // Be sure to have plenty of clean-up:
     beforeEach(function () {
-      puppets = [];
+      puppets = [new PuppetSentinel(), new PuppetSentinel, new PuppetSentinel()];
       sentinel = null;
     });
     afterEach (function () {
@@ -97,26 +98,45 @@ describe("RedisSentinel", function () {
       sentinel && sentinel.kill();
     });
 
+    // Used for starting the first n puppets.
+    function startNPuppets(num, cb) {
+      async.map(
+        puppets.slice(0, num),
+        function (puppet, done) {
+          puppet.start(done);
+        },
+        cb
+      )
+    }
+
+    // A createClient that only encodes the info thrown at it:
+    function testCreateClient(port, host, config) {
+      return host + ":" + port + " " + JSON.stringify(config);
+    }
+
     it("can connect to a sentinel and pull a configuration", function (done) {
-      var s1 = new PuppetSentinel();
-      puppets.push(s1);
-      s1
+      puppets[0]
         .setInfo('sentinel')
         .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
-        .addSlave("main", {ip: "10.0.1.1", port: 6379, isDown: false})
-        .start(function (err, port) {
-          if (err) { return done(err); }
-          
-          // Try a connection?
-          var s_conf = {outageRetryTimeout: -1, createClient: function (port, host) { return host+":"+port; }};
-          sentinel = new RedisSentinel([{host:"127.0.0.1", port: port}], s_conf);
-          sentinel.on('change', function (name, repl) {
-            expect(name).toBe("main");
-            expect(repl.connectMaster()).toBe("10.0.0.1:6379");
-            expect(repl.connectSlave()).toBe("10.0.1.1:6379");
-            done();
-          });
+        .addSlave("main", {ip: "10.0.1.1", port: 6379, isDown: false});
+
+      startNPuppets(1, function (err, port) {
+        if (err) { return done(err); }
+        
+        // Try a connection?
+        var s_conf = {
+          outageRetryTimeout: -1,
+          createClient: testCreateClient
+        };
+
+        sentinel = new RedisSentinel([{host:"127.0.0.1", port: port}], s_conf);
+        sentinel.on('change', function (name, repl) {
+          expect(name).toBe("main");
+          expect(repl.connectMaster()).toBe("10.0.0.1:6379 {}");
+          expect(repl.connectSlave()).toBe("10.0.1.1:6379 {}");
+          done();
         });
+      });
     });
 
     it("will dodge bad connections");
