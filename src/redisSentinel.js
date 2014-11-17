@@ -24,6 +24,9 @@ function RedisSentinel(sentinels, options) {
   this.fetcher = null;
   this.watcher = null;
   this.replicas = {};
+
+  // Keep track of death:
+  this.terminated = false;
   
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
@@ -74,12 +77,17 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
   
   // First, check type:
   if (!sentinels || !Array.isArray(sentinels)) {
-    throw new TypeError("First argument needs to be an array");
+    throw new TypeError("First argument needs to be an array of sentinel config objects");
+  }
+
+  // Check array length:
+  if (!sentinels.length) {
+    throw new TypeError("Sentinels array shouldn't be empty");
   }
 
   // Now go through each item in the list, and make sure that there's the necessary info:
   sentinels.forEach(function (item, idx) {
-    if (typeof item !== 'object') {
+    if (!item || typeof item !== 'object') {
       throw new TypeError("Item #" + idx + " in sentinels array isn't an object");
     }
     if (!item.host || typeof item.host !== 'string') {
@@ -118,12 +126,14 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
       // Errors at this stage mean that we will move to the next sentinel:
       function _onError() {
         fetcher.removeListener('connected', _onConnect);
+        if (sentinel.terminated) { return; }
         next();
       }
 
       // Else, cool. Re-hook this thing up in a more stable way, and ask it for a config:
       function _onConnect() {
         fetcher.removeListener('error', _onError);
+        if (sentinel.terminated) { return; }
 
         // Hook up the event handlers for the long run:
         fetcher
@@ -137,14 +147,16 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
           .on('refresh', fetcher.updateConfigs.bind(fetcher));
 
         function _passAlongEvent(channel, msg) {
+          if (sentinel.terminated) { return; }
           sentinel.emit('event', channel, msg);
         }
         
         function _onGetReplInfo(name, master, slaves) {
+          if (sentinel.terminated) { return; }
 
           // Create a new RedisReplica if we've never seen this name before:
           if (!sentinel.replicas.hasOwnProperty(name)) {
-            sentinel.replicas[name] = new RedisReplica(name, sentinel.createClient, sentinel.redisOptions);
+            sentinel.replicas[name] = new RedisReplica(name, sentinel.options.createClient, sentinel.options.redisOptions);
           }
 
           // Load the master / slave configs into the struct:
@@ -164,6 +176,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
       }
     },
     function (err) {
+      if (sentinel.terminated) { return; }
       if (err) { return cb(err); }
 
       // We made it through all endpoints. What do??
@@ -183,7 +196,8 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
 
 
 RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndReconnect(err) {
-
+  if (this.terminated) { return; }
+  
   // Log the error:
   this._log("Error encountered:", err);
 
@@ -194,6 +208,17 @@ RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndRecon
 
   // Trigger a re-connect:
   this._connectSentinel();
+};
+
+
+RedisSentinel.prototype.kill = function kill() {
+  if (this.terminated) { return; }
+
+  // Kill our redis clients:
+  if (this.fetcher) { this.fetcher.kill(); }
+  if (this.watcher) { this.watcher.kill(); }
+  this.fetcher = this.watcher = null;
+  this.terminated = true;
 };
 
 
