@@ -1,6 +1,6 @@
 var RedisSentinel_lib = require('../src/redisSentinel')
   , RedisSentinel = RedisSentinel_lib.RedisSentinel
-  , PuppetSentinel = require('./util/puppetSentinel')
+  , MockSentinel = require('./util/mockSentinel')
   , async = require('async')
   , expect = require('expect');
 
@@ -85,25 +85,25 @@ describe("RedisSentinel", function () {
 
   describe("when connecting", function () {
     
-    var puppets = [];
+    var mocks = [];
     var sentinel;
 
     // Be sure to have plenty of clean-up:
     beforeEach(function () {
-      puppets = [new PuppetSentinel(), new PuppetSentinel, new PuppetSentinel()];
+      mocks = [new MockSentinel(), new MockSentinel, new MockSentinel()];
       sentinel = null;
     });
     afterEach (function () {
-      puppets.forEach(function (p) { p.kill(); });
+      mocks.forEach(function (p) { p.kill(); });
       sentinel && sentinel.kill();
     });
 
-    // Used for starting the first n puppets.
-    function startNPuppets(num, cb) {
+    // Used for starting the first n mock Sentinels:
+    function startNMocks(num, cb) {
       async.map(
-        puppets.slice(0, num),
-        function (puppet, done) {
-          puppet.start(done);
+        mocks.slice(0, num),
+        function (mock, done) {
+          mock.start(done);
         },
         cb
       )
@@ -115,12 +115,12 @@ describe("RedisSentinel", function () {
     }
 
     it("can connect to a sentinel and pull a configuration", function (done) {
-      puppets[0]
+      mocks[0]
         .setInfo('sentinel')
         .addMaster("main", {ip: "10.0.0.1", port: 6379, isDown: false})
         .addSlave("main", {ip: "10.0.1.1", port: 6379, isDown: false});
 
-      startNPuppets(1, function (err, port) {
+      startNMocks(1, function (err, port) {
         if (err) { return done(err); }
         
         // Try a connection?

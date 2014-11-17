@@ -57,7 +57,7 @@ var INFO_STRINGS = {
 };
 
 
-function PuppetSentinel() {
+function MockSentinel() {
   var sentinel = this;
 
   this.info = null;
@@ -148,15 +148,15 @@ function PuppetSentinel() {
   });
 }
 
-util.inherits(PuppetSentinel, events.EventEmitter);
+util.inherits(MockSentinel, events.EventEmitter);
 
-PuppetSentinel.prototype.setInfo = function (type) {
+MockSentinel.prototype.setInfo = function (type) {
   if (!INFO_STRINGS.hasOwnProperty(type)) { throw new Error("Invalid type"); }
   this.info = INFO_STRINGS[type];
   return this
 };
 
-PuppetSentinel.prototype.addMaster = function (name, obj) {
+MockSentinel.prototype.addMaster = function (name, obj) {
   if (!name || !obj || typeof name !== 'string' || typeof obj !== 'object') {
     throw new Error("Wrong args passed to addMaster");
   }
@@ -165,7 +165,7 @@ PuppetSentinel.prototype.addMaster = function (name, obj) {
   return this;
 };
 
-PuppetSentinel.prototype.addSlave = function (name, obj) {
+MockSentinel.prototype.addSlave = function (name, obj) {
   if (!name || !obj || typeof name !== 'string' || typeof obj !== 'object') {
     throw new Error("Wrong args passed to addSlave");
   }
@@ -175,7 +175,7 @@ PuppetSentinel.prototype.addSlave = function (name, obj) {
   return this;
 };
 
-PuppetSentinel.prototype.start = function (cb) {
+MockSentinel.prototype.start = function (cb) {
   var server = this.server;
   this.was_started = true;
   // Listen on random port, but only respond to localhost:
@@ -185,13 +185,13 @@ PuppetSentinel.prototype.start = function (cb) {
   });
 };
 
-PuppetSentinel.prototype.kill = function () {
+MockSentinel.prototype.kill = function () {
   if (!this.was_started) { return; }
   this.emit('suicide');
   this.server.close();
 };
 
-PuppetSentinel.prototype.sendEvent = function (name, msg) {
+MockSentinel.prototype.sendEvent = function (name, msg) {
   this.emit('event', name, msg);
 };
 
@@ -211,4 +211,4 @@ function serializeArray(arr) {
   return out;
 }
 
-module.exports = PuppetSentinel;
+module.exports = MockSentinel;
