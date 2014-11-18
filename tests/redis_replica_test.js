@@ -1,4 +1,5 @@
 var RedisReplica = require('../src/redisReplica')
+  , mockRandom = require('./util/mockRandom')
   , expect = require('expect');
 
 
@@ -305,45 +306,8 @@ describe('RedisReplica', function () {
 
     describe("for a random slave", function () {
       
-      // Random tests suck, so I just captured Math.random() values in here, and
-      // we return them, in order, looping, so that we get consistent results:
-      var rand_values = [
-        0.715845766, 0.051367745, 0.675104293, 0.448307905, 0.713363221, 0.873357441,
-        0.792706331, 0.835047490, 0.200214375, 0.704713299, 0.547501155, 0.966028834,
-        0.392288157, 0.977402867, 0.584800564, 0.929895702, 0.217492668, 0.359781738,
-        0.710340757, 0.920402542, 0.848172454, 0.094015050, 0.442929151, 0.499152195,
-        0.062294991, 0.228426645, 0.010479365, 0.779217425, 0.671819255, 0.658546096,
-        0.097430948, 0.264806017, 0.416617402, 0.202993543, 0.473419679, 0.107525041,
-        0.236953518, 0.188559022, 0.795392269, 0.577662272, 0.738166236, 0.998207827,
-        0.648416910, 0.910020646, 0.370073152, 0.900422364, 0.981973963, 0.513069100,
-        0.901448062, 0.912173099, 0.615404443, 0.953569356, 0.124154245, 0.079709604,
-        0.843693365, 0.233913375, 0.116981740, 0.971280579, 0.420873296, 0.425035121,
-        0.878392498, 0.142440465, 0.020015148, 0.299002940, 0.472552949, 0.613979072,
-        0.179202477, 0.702628072, 0.551905613, 0.197057615, 0.909234748, 0.581873472,
-        0.307028834, 0.778485547, 0.604170046, 0.050436106, 0.472222610, 0.619664918,
-        0.319781737, 0.955484421, 0.755287120, 0.390939193, 0.009491783, 0.770722393,
-        0.669567544, 0.087312787, 0.128874362, 0.064460350, 0.160529132, 0.175202386,
-        0.151726768, 0.045888786, 0.395941542, 0.335599424, 0.963686724, 0.464009853,
-        0.006510694, 0.071882985, 0.053042541, 0.002643924
-      ];
-
-      // Swap out Math.random before tests:
-      var saved_random = null;
-      beforeEach(function () {
-        saved_random = Math.random;
-
-        var rand_idx = 0;
-        Math.random = function () {
-          rand_idx = (rand_idx + 1) % rand_values.length;
-          return rand_values[rand_idx];
-        };
-      });
-
-      // Repair it after each test:
-      afterEach(function () {
-        Math.random = saved_random;
-        saved_random = null;
-      });
+      // RNG setup:
+      mockRandom.installHooks();
 
       it("returns null when no slaves", function () {
         var repl = new RedisReplica("lol", makeCreateClient(), _conf);

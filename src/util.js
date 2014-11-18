@@ -75,6 +75,9 @@ function timedCommand(client, timeout, cmd, opts, cb) {
 };
 
 
+var LOGGER_TARGET = null;
+
+
 /**
  * Will build a simple logger. Will write to stdout IFF we were told to in the user configs.
  * Arguments are the same format as for node util's format function, with the exception that
@@ -96,7 +99,7 @@ function buildLogger(namespace) {
       }
     }
     var str = util.format.apply(util, arguments);
-    console.log(namespace, str);
+    LOGGER_TARGET(namespace, str);
   };
 
   out.configure = function configure(options) {
@@ -106,6 +109,7 @@ function buildLogger(namespace) {
   return out;
 }
 
+
 // Now to put our own stuff in there:
 util._             = _;
 util.async         = require('async');
@@ -113,6 +117,19 @@ util.parentRequire = parentRequire;
 util.shuffleArray  = shuffleArray;
 util.timedCommand  = timedCommand;
 util.buildLogger   = buildLogger;
+
+
+// Useful for testing:
+util.customLoggerTarget = function (custom_target) {
+  if (!custom_target) {
+    LOGGER_TARGET = console.log.bind(console);
+    return;
+  }
+  LOGGER_TARGET = custom_target;
+};
+
+// Use that custom target thing to set up the initial target:
+util.customLoggerTarget(null);
 
 
 module.exports = util;
