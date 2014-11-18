@@ -450,6 +450,55 @@ describe("RedisConfigFetcher", function () {
       client.emit('ready');
     });
 
+    it("only emits 'config's for replicas that exist", function (done) {
+
+      var client = new FakeClient();
+      client._send_command = function (cmd, args, cb) {
+        if (cmd === "INFO") { return cb(null, sentinel_info); }
+        if (cmd.toLowerCase() === "sentinel") {
+          switch(args[0].toLowerCase()) {
+            case "masters": return cb(null, masters_results);
+            case "slaves":  return cb(null, slaves_results);
+          }
+        }
+        // Else, do nothing.
+      };
+
+      var rcf = new RedisConfigFetcher('localhost', 6379, {
+        _testClient: client,
+        commandTimeout: 50,
+        watchedNames: ["foo", "bar"]
+      });
+      
+      var seen_foo = false
+        , seen_bar = false;
+
+      // Override the log to catch the warning about bar:
+      rcf._log = function () {
+        var msg = [].slice.call(arguments, 0).map(String).join(" ");
+        
+        if (/warning.*watchedNames.*bar/i.test(msg)) {
+          seen_bar = true;
+        
+        } else if(/Done fetching configs/i.test(msg)) {
+          var err = (seen_foo && seen_bar) ? null : new Error("Things omitted");
+          return done(err);
+        }
+      };
+      
+      // Register for 'config' events to catch info about foo:
+      rcf.on('config', function (name, master, slaves) {
+        validateResults(name, master, slaves);
+        seen_foo = true;
+      });
+
+      rcf.on('connected', function () {
+        rcf.updateConfigs();
+      });
+
+      client.emit('ready');
+    });
+
     it("runs one update at a time", function (done) {
 
       var client = new FakeClient();

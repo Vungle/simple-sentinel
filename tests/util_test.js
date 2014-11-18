@@ -62,7 +62,7 @@ describe('Util', function () {
     });
 
     it("gets null on not found", function () {
-      // This module BETTER not exists:
+      // This module BETTER not exist:
       var out = util.parentRequire("fdsjafdsajkfldsjaifodlkfsdjalkf-" + Date.now());
       expect(out).toBe(null);
     });

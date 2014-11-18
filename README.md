@@ -17,7 +17,7 @@ var sentinels = [
 
 var options = {
   // Omit this to track everything that the chosen sentinel knows about:
-  watchedReplicaNames: ["replica_a", "replica_b", "replica_d"]
+  watchedNames: ["replica_a", "replica_b", "replica_d"]
 };
 
 // Create a sentinel object to track the given Replicas:
@@ -60,7 +60,7 @@ Will create the structure, and start the process of connecting.
     - `redisOptions` (**Object**) is the object that is passed to createClient as options. Default is `{}`.
     - `refreshTimeout` (**Number**) is the number of milliseconds between attempts to fetch configurations from redis. Normally, we use events emitted to us through sentinel's pub/sub mechanism, but we always have this as a fallback should a message not make it to us. Default is 60000.
     - `timeout` (**Number**) is the connect timeout in milliseconds for connecting to a sentinel server. Default is 500.
-    - `watchedReplicaNames` (**Array**) is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
+    - `watchedNames` (**Array**) is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
 
 ##### Event: "error"
 
