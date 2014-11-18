@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "test": "mocha -R spec --check-leaks tests/*_test.js",
+    "nyan": "mocha -R nyan --check-leaks tests/*_test.js",
     "coverage": "istanbul cover _mocha -- -R spec tests/*_test.js"
   },
   "main": "src/index.js",
