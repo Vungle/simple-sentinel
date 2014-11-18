@@ -64,9 +64,12 @@ function MockSentinel() {
   this.masters = {};
   this.slaves = {};
   this.was_started = false;
+  this.stop_responding = false;
 
   this.server = net.createServer(function (socket) {
     
+    sentinel.emit('connection');
+
     var parser = boris({return_buffers: false});
     var subscribed_on = [];
     
@@ -75,6 +78,8 @@ function MockSentinel() {
         socket.destroy();
         throw err;
       }
+
+      if (sentinel.stop_responding) { return; }
 
       switch(cmd[0] && cmd[0].toLowerCase()) {
         case 'info':
@@ -88,7 +93,7 @@ function MockSentinel() {
           subscribed_on = subscribed_on.concat(new_channels);
           var response = new_channels
             .map(function (ch, idx) {
-              return "*3\r\n" + "$" + ch.length + "\r\n" + ch + "\r\n:" + (idx+1) + "\r\n";
+              return "*3\r\n$9\r\nsubscribe\r\n$" + ch.length + "\r\n" + ch + "\r\n:" + (idx+1) + "\r\n";
             })
             .join("");
           socket.write(response);
@@ -141,7 +146,8 @@ function MockSentinel() {
     sentinel.on('event', function (name, msg) {
       if (subscribed_on.indexOf(name) >= 0) {
         // Send the message:
-        socket.write("*3\r\n$7message\r\n$" + name.length + "\r\n" + name + "\r\n$" + msg.length + "\r\n" + msg + "\r\n");
+        var output = "*3\r\n$7\r\nmessage\r\n$" + name.length + "\r\n" + name + "\r\n$" + msg.length + "\r\n" + msg + "\r\n";
+        socket.write(output);
       }
     });
 
@@ -179,6 +185,11 @@ MockSentinel.prototype.addSlave = function (name, obj) {
   // obj is like: {ip: "...", port: 6379, isDown: true}
   this.slaves[name] = this.slaves[name] || [];
   this.slaves[name].push(obj);
+  return this;
+};
+
+MockSentinel.prototype.stopResponding = function () {
+  this.stop_responding = true;
   return this;
 };
 

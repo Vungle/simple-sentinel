@@ -117,6 +117,9 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
     util.shuffleArray(this.sentinels);
   }
 
+  // Call this when shit fucks up:
+  var _abortAndReconnect = util._.once(sentinel._handleErrorAndReconnect.bind(sentinel));
+
   // Try them all!
   util.async.forEachSeries(
     this.sentinels,
@@ -140,12 +143,12 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
 
         // Hook up the event handlers for the long run:
         fetcher
-          .on('error', sentinel._handleErrorAndReconnect.bind(sentinel))
+          .on('error', _abortAndReconnect)
           .on('config', _onGetReplInfo);
 
         // Now, create a watcher to poke this sucker along:
         sentinel.watcher = new RedisWatcher(conf.host, conf.port, sentinel.options)
-          .on('error', sentinel._handleErrorAndReconnect.bind(sentinel))
+          .on('error', _abortAndReconnect)
           .on('event', _passAlongEvent)
           .on('refresh', fetcher.updateConfigs.bind(fetcher));
 
