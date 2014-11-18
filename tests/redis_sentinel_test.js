@@ -84,6 +84,13 @@ describe("RedisSentinel", function () {
       expect(now_val).toNotBe(default_val);
     });
 
+    it("will allow a client redis to be injected", function () {
+      var client_redis = { createClient: function () { return "TEST PASS"; }};
+      RedisSentinel_lib.setClientRedis(client_redis);
+      var s = new RedisSentinel([{host:"127.0.0.1", port: 6323}]);
+      expect(s.options.createClient()).toBe("TEST PASS");
+    });
+
     it("works as both a constructor and a function call", function () {
       var s = new RedisSentinel([{host:"127.0.0.1", port: 6323}], {outageRetryTimeout: -1});
       expect(s).toBeA(RedisSentinel);
