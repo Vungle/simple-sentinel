@@ -1,5 +1,8 @@
 var util = require('../src/util')
   , mockRandom = require('./util/mockRandom')
+  , fs = require('fs')
+  , path = require('path')
+  , temp = require('temp').track()
   , expect = require('expect');
 
 describe('Util', function () {
@@ -7,6 +10,62 @@ describe('Util', function () {
   it("extends the Node.js util lib", function () {
     expect(util.format).toBeA(Function);
     expect(util.inherits).toBeA(Function);
+  });
+
+  describe("when require()-ing from a parent", function () {
+
+    beforeEach(function () {
+      // Blank the util cache reference:
+      delete require.cache[require.resolve('../src/util')];
+    });
+
+    afterEach(function () {
+      // Restore the util cache to a non-temp require chain:
+      delete require.cache[require.resolve('../src/util')];
+      util = require('../src/util');
+    });
+
+    it("gets the right module", function () {
+
+      // This test is tricky. We need to create a temp directory with a sub
+      // directory. We then test the ability of one file to use the parent
+      // require function with a relative path, and make sure that the path
+      // correctly evaluates from the parent directory.
+      // 
+      // We use sync functions here, because this is a test and I'm not insane. 
+      
+      var util_dir         = path.join(__dirname, "../src/util");
+      var util_dir_escaped = util_dir.replace(/'/g, "\\'");
+      var temp_dir         = temp.mkdirSync("sentinel_require_test");
+      var temp_subdir      = path.join(temp_dir, "dir");
+
+      var test_start_path = path.join(temp_dir, "run_test.js");
+
+      fs.mkdirSync(temp_subdir);
+  
+      fs.writeFileSync(test_start_path,                  "module.exports=require('./dir');");
+      fs.writeFileSync(path.join(temp_dir, "dep.js"),    "module.exports='root_dir';");
+      
+      fs.writeFileSync(path.join(temp_subdir, "dep.js"), "module.exports='sub_dir';");
+      fs.writeFileSync(path.join(temp_subdir, "index.js"),
+        "var util = require('"+util_dir_escaped+"');\n" +
+        "module.exports = {\n" +
+        "  ours:   require('./dep'),\n" +
+        "  parent: util.parentRequire('./dep')\n" +
+        "};\n"
+      );
+
+      // Require the bottom object, and see what it comes up with:
+      var result = require(test_start_path);
+      expect(result.ours).toBe("sub_dir");
+      expect(result.parent).toBe("root_dir");
+    });
+
+    it("gets null on not found", function () {
+      // This module BETTER not exists:
+      var out = util.parentRequire("fdsjafdsajkfldsjaifodlkfsdjalkf-" + Date.now());
+      expect(out).toBe(null);
+    });
   });
 
   describe("when making a logger", function () {
