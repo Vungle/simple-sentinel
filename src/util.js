@@ -13,15 +13,18 @@ var util    = _.extend({}, node_util);
  * @return {Object}             The require()-ed module, or null if we couldn't find it at any level.
  */
 function parentRequire(module_name) {
-  var m = module.parent;
+
+  // One layer up is our own index.js. Two layers up is the thing that required this lib:
+  var m = module.parent && module.parent.parent;
 
   while ( m ) {
     try {
-      return module.require(module_name);
+      return m.require(module_name);
     } catch (ex) {
       m = m.parent;
     }
   }
+  
   return null;
 }
 
