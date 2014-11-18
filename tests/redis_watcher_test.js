@@ -15,8 +15,18 @@ util.inherits(FakeClient, EventEmitter);
 describe("RedisWatcher", function () {
   this.timeout(200);
 
+  // For clean up:
+  var w = null;
+  afterEach(function (done) {
+    if (!w || w.finalized) { return done(); }
+    w.on('error', function () {
+      done();
+    });
+    w.kill();
+  });
+
   it("emits 'refresh' on startup", function (done) {
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: new FakeClient(),
       refreshTimeout: 5000
     });
@@ -24,7 +34,7 @@ describe("RedisWatcher", function () {
   });
 
   it("emits 'refresh' after period of no changes", function (done) {
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: new FakeClient(),
       refreshTimeout: 75
     });
@@ -40,7 +50,7 @@ describe("RedisWatcher", function () {
 
   it("emits 'refresh' after change", function (done) {
     var fake_client = new FakeClient();
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
@@ -57,7 +67,7 @@ describe("RedisWatcher", function () {
 
   it("emits 'event' after events", function (done) {
     var fake_client = new FakeClient();
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
@@ -78,7 +88,7 @@ describe("RedisWatcher", function () {
 
   it("emits 'error' on error", function (done) {
     var fake_client = new FakeClient();
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
@@ -93,7 +103,7 @@ describe("RedisWatcher", function () {
   
   it("emits 'error' on hangup", function (done) {
     var fake_client = new FakeClient();
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
@@ -116,7 +126,7 @@ describe("RedisWatcher", function () {
       if (is_dead) { throw new Error("subscribe after death"); }
     };
 
-    var w = new RedisWatcher("localhost", 6379, {
+    w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
