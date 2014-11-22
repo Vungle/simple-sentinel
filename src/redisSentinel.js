@@ -61,6 +61,8 @@ function RedisSentinel(sentinels, options) {
     return { host: host, port: port };
   });
 
+  this._dedupeSentinels();
+
   // Start this sucker on its way:
   this._connectSentinel();
 }
@@ -214,6 +216,14 @@ RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndRecon
 
   // Trigger a re-connect:
   this._connectSentinel();
+};
+
+
+RedisSentinel.prototype._dedupeSentinels = function _dedupeSentinels() {
+  // Dedupe the list based on "host(lowercase):port":
+  this.sentinels = util._.uniq(this.sentinels, function (conf) {
+    return conf.host.toLowerCase() + ":" + conf.port;
+  });
 };
 
 

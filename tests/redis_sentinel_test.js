@@ -84,11 +84,25 @@ describe("RedisSentinel", function () {
       expect(now_val).toNotBe(default_val);
     });
 
-    it("will allow a client redis to be injected", function () {
+    it("will allow a client redis lib to be injected", function () {
       var client_redis = { createClient: function () { return "TEST PASS"; }};
       RedisSentinel_lib.setClientRedis(client_redis);
       var s = new RedisSentinel([{host:"127.0.0.1", port: 6323}]);
       expect(s.options.createClient()).toBe("TEST PASS");
+    });
+
+    it("will dedupe the list of sentinels", function () {
+      var s = new RedisSentinel([
+        { host:"127.0.0.1", port: 26379 },
+        { host:"127.0.1.2", port: 6323 },
+        { host:"127.0.0.1" }
+      ]);
+
+      function _equal(a, b) { return (a.host === b.host && a.port === b.port); };
+
+      expect(s.sentinels.length).toBe(2);
+      expect(s.sentinels).toContain({ host:"127.0.0.1", port: 26379 }, _equal);
+      expect(s.sentinels).toContain({ host:"127.0.1.2", port: 6323 }, _equal);
     });
 
     it("works as both a constructor and a function call", function () {
@@ -431,8 +445,6 @@ describe("RedisSentinel", function () {
         
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
-          { host:"127.0.0.1", port: ports[1]},
-          { host:"127.0.0.1", port: ports[2]},
         ];
 
         sentinel = new RedisSentinel(s_list, s_conf);
@@ -478,8 +490,6 @@ describe("RedisSentinel", function () {
         
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
-          { host:"127.0.0.1", port: ports[1]},
-          { host:"127.0.0.1", port: ports[2]},
         ];
 
         var EV_NAME = "+slave";
