@@ -28,7 +28,7 @@ function RedisSentinel(sentinels, options) {
   // Keep track of death:
   this.terminated = false;
   
-  // Simple validation:
+  // Simple validation of sentinel list:
   RedisSentinel._validateSentinelList(sentinels);
 
   // Extend the default values with the custom parameters:
@@ -36,6 +36,7 @@ function RedisSentinel(sentinels, options) {
     commandTimeout:     1500,
     createClient:       (client_redis && client_redis.createClient) || redis.createClient,
     debugLogging:       false,
+    discoverSentinels:  false,
     outageRetryTimeout: 5000,
     randomizeSentinels: true,
     redisOptions:       {},
@@ -49,8 +50,11 @@ function RedisSentinel(sentinels, options) {
   // Make sure that the outside can't inject a test client:
   delete this.options._testClient;
 
-  this._log.configure(this.options);
+  // Now, validate / do simple normalization of the settings:
+  RedisSentinel._validateSettings(this.options);
 
+  // Start up our logger:
+  this._log.configure(this.options);
   this._log("Initialization started. Has client redis:", !!client_redis);
 
   // Store connection info for all the sentinels:
@@ -99,6 +103,41 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
   });
 };
 
+
+/**
+ * Will do simple validation of the settings stuff. Throws if there was a problem.
+ * @param  {Object} settings Settings from the user. Exended with defaults.
+ */
+RedisSentinel._validateSettings = function _validateSettings(settings) {
+
+  function _typeError(name, type) { throw new TypeError(name + (type ? (" should be a " + type) : "")); }
+  function _rangeError(msg) { throw new RangeError(msg); }
+
+  // First, check that the types are alright:
+  (typeof settings.commandTimeout === 'number')      || _typeError("commandTimeout", "number (milliseconds)");
+  (typeof settings.createClient === 'function')      || _typeError("createClient", "function");
+  (typeof settings.debugLogging === 'boolean')       || _typeError("debugLogging", "boolean");
+  (typeof settings.discoverSentinels === 'boolean')  || _typeError("discoverSentinels", "boolean");
+  (typeof settings.outageRetryTimeout === 'number')  || _typeError("outageRetryTimeout", "number (milliseconds)");
+  (typeof settings.randomizeSentinels === 'boolean') || _typeError("randomizeSentinels", "boolean");
+  (typeof settings.redisOptions === 'object')        || _typeError("redisOptions", "object");
+  (typeof settings.refreshTimeout === 'number')      || _typeError("refreshTimeout", "number (milliseconds)");
+  (typeof settings.timeout === 'number')             || _typeError("timeout", "number (milliseconds)");
+  
+  // Check the bounds on the numbers:
+  (settings.commandTimeout > 0)         || _rangeError("commandTimeout needs to be greater than 0");
+  (!isNaN(settings.outageRetryTimeout)) || _rangeError("outageRetryTimeout cannot be NaN");
+  (settings.refreshTimeout > 0)         || _rangeError("refreshTimeout needs to be greater than 0");
+  (settings.timeout > 0)                || _rangeError("timeout needs to be greater than 0");
+
+  // Verify the watchedNames array:
+  if (settings.watchedNames !== null) {
+    (Array.isArray(settings.watchedNames)) || _typeError("watchedNames, if not null, should be an array of strings");
+    settings.watchedNames.forEach(function (item, idx) {
+      (typeof item === 'string') || _typeError("watchedNames[" + idx + "]", "string");
+    });
+  }
+};
 
 
 // Logger:

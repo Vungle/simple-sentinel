@@ -111,6 +111,93 @@ describe("RedisSentinel", function () {
       s = RedisSentinel([{host:"127.0.0.1", port: 6323}], {outageRetryTimeout: -1});
       expect(s).toBeA(RedisSentinel);
     });
+
+    describe("when validating settings", function () {
+
+      function validate(settings) {
+        new RedisSentinel([{host: '127.0.0.1'}], settings);
+      }
+
+      it("rejects bad types", function () {
+        expect(function () {
+          validate({commandTimeout: "123"});
+        }).toThrow(/commandTimeout.*number/i);
+        
+        expect(function () {
+          validate({createClient: "lol"});
+        }).toThrow(/createClient.*function/i);
+        
+        expect(function () {
+          validate({debugLogging: "yeah sure"});
+        }).toThrow(/debugLogging.*boolean/i);
+
+        expect(function () {
+          validate({discoverSentinels: "yeah sure"});
+        }).toThrow(/discoverSentinels.*boolean/i);
+
+        expect(function () {
+          validate({outageRetryTimeout: "123"});
+        }).toThrow(/outageRetryTimeout.*number/i);
+
+        expect(function () {
+          validate({randomizeSentinels: "yeah sure"});
+        }).toThrow(/randomizeSentinels.*boolean/i);
+
+        expect(function () {
+          validate({redisOptions: 1});
+        }).toThrow(/redisOptions.*object/i);
+
+        expect(function () {
+          validate({refreshTimeout: "30 seconds"});
+        }).toThrow(/refreshTimeout.*number/i);
+
+        expect(function () {
+          validate({timeout: "30 seconds"});
+        }).toThrow(/timeout.*number/i);
+
+        expect(function () {
+          validate({watchedNames: "a, b, oh and c too!"});
+        }).toThrow(/watchedNames.*array of strings/i);
+      });
+
+      it("rejects NaNs in numbers", function () {
+        expect(function () {
+          validate({commandTimeout: NaN});
+        }).toThrow(/commandTimeout/i);
+
+        expect(function () {
+          validate({outageRetryTimeout: NaN});
+        }).toThrow(/outageRetryTimeout/i);
+
+        expect(function () {
+          validate({refreshTimeout: NaN});
+        }).toThrow(/refreshTimeout/i);
+
+        expect(function () {
+          validate({timeout: NaN});
+        }).toThrow(/timeout/i);
+      });
+
+      it("rejects negative numbers", function () {
+        expect(function () {
+          validate({commandTimeout: -1});
+        }).toThrow(/commandTimeout/i);
+
+        expect(function () {
+          validate({refreshTimeout: -1});
+        }).toThrow(/refreshTimeout/i);
+
+        expect(function () {
+          validate({timeout: -1});
+        }).toThrow(/timeout/i);
+      });
+
+      it("rejects non-string in watchedNames array", function () {
+        expect(function () {
+          validate({watchedNames: ["foo", "bar", 3.14, "world"]});
+        }).toThrow(/watchedNames\[2\].*string/i);
+      });
+    });
   });
 
   describe("when connecting", function () {
