@@ -4,7 +4,7 @@ var util   = require('./util')
 
 
 // === Events Emitted =====
-// error(err), connected(), config(name, master, [slave])
+// error(err), connected(), config(name, master, [slave]), sentinels([sentinel])
 // ========================
 
 
@@ -262,22 +262,51 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
     // tracked by the sentinel:
     tracked_names = Object.keys(tracked_masters);
 
-    // Now pull in all slave configurations:
+    // We batch the sentinels in a list, and emit them all at once:
+    var sentinel_list = [];
+
+    // Now pull in all slave / sentinel configurations:
     util.async.each(
       tracked_names,
       function fetchSlaves(name, done) {
         if (fetcher.finalized) { return; }
 
-        util.timedCommand(fetcher.client, fetcher.cmd_to, "SENTINEL", ["slaves", name], function (err, slaves) {
+        var tasks = [
+          function _fetchSlaves(callback) {
+            util.timedCommand(fetcher.client, fetcher.cmd_to, "SENTINEL", ["slaves", name], callback);
+          },
+          function _fetchSentinels(callback) {
+            if (!fetcher.config.discoverSentinels) { return callback(null, []); }
+            util.timedCommand(fetcher.client, fetcher.cmd_to, "SENTINEL", ["sentinels", name], callback);
+          }
+        ];
+
+        util.async.parallel(tasks, function (err, results) {
           if (err || fetcher.finalized) {
             return fetcher.kill(err);
           }
+
+          var slaves    = results[0]
+            , sentinels = results[1];
 
           // Parse the slave data:
           var parsed_slaves = fetcher._parseServerList("Slave", slaves);
           if (!parsed_slaves) { return fetcher.kill(new Error("Parsing slave list failed")); }
 
-          // Pass this along to the outside:
+          // Parse the sentinel data:
+          var parsed_sentinels = fetcher._parseServerList("Sentinel", sentinels);
+          if (!parsed_sentinels) {
+            fetcher._log("Warning: Sentinel parsing failed. No sentinels added.");
+            parsed_sentinels = [];
+          }
+
+          // Add the sentinel connection info to the list of things to emit:
+          parsed_sentinels = parsed_sentinels.map(function (data) {
+            return { host: data.ip, port: data.port };
+          });
+          sentinel_list.push.apply(sentinel_list, parsed_sentinels);
+
+          // Pass the config along to the outside:
           fetcher.emit('config', name, tracked_masters[name], parsed_slaves);
           done();
         });
@@ -287,6 +316,12 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
 
         // Ok, done running:
         fetcher.is_fetching = false;
+
+        // Emit the deduped sentinels, if we have any:
+        if (sentinel_list.length) {
+          sentinel_list = util._.uniq(sentinel_list, function (s) { return s.host + ":" + s.port; });
+          fetcher.emit('sentinels', sentinel_list);
+        }
 
         fetcher._log("Done fetching configs");
 

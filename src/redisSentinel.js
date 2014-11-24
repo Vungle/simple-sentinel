@@ -184,8 +184,9 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
 
         // Hook up the event handlers for the long run:
         fetcher
-          .on('error', _abortAndReconnect)
-          .on('config', _onGetReplInfo);
+          .on('error',     _abortAndReconnect)
+          .on('sentinels', _addSentinels)
+          .on('config',    _onGetReplInfo);
 
         // Now, create a watcher to poke this sucker along:
         sentinel.watcher = new RedisWatcher(conf.host, conf.port, sentinel.options)
@@ -196,6 +197,16 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
         function _passAlongEvent(channel, msg) {
           if (sentinel.terminated) { return; }
           sentinel.emit('event', channel, msg);
+        }
+
+        function _addSentinels(sentinels) {
+          if (sentinel.terminated) { return; }
+          if (!sentinel.options.discoverSentinels) {
+            sentinel._log("Warning: ConfigFetcher is emitting sentinels when not configured to. (!!!)");
+            return;
+          }
+          sentinel.sentinels.push.apply(sentinel.sentinels, sentinels);
+          sentinel._dedupeSentinels();
         }
         
         function _onGetReplInfo(name, master, slaves) {
