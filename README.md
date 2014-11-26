@@ -1,4 +1,4 @@
-simple-sentinel
+simple-sentinel [![Build Status](https://travis-ci.org/Vungle/simple-sentinel.svg?branch=master)](https://travis-ci.org/Vungle/simple-sentinel)
 ===============
 
 An easy to use redis-sentinel client for Node.js. Features include:
