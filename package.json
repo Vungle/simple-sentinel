@@ -1,7 +1,7 @@
 {
   "name": "simple-sentinel",
   "version": "0.1.1",
-  "description": "An easy-to-use redis-sentinel client for Node.js",
+  "description": "An easy to use redis-sentinel client for Node.js",
   "contributors": [
     "Raymond Myers <raydog87@gmail.com>",
     "Chrissy Donovan <christine.n.donovan@gmail.com>"
