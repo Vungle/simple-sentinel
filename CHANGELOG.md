@@ -3,6 +3,7 @@
 ### 0.1.1 (*2014 Nov 26*)
  - NPM release.
  - Doc updates.
+ - Sentinels array is now deduped.
  - Test fixes.
 
 ### 0.1.0 (*2014 Nov 18*)
