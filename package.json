@@ -37,6 +37,5 @@
     "boris": "0.12.1",
     "temp": "0.8.1"
   },
-  "private": true,
   "license": "MIT"
 }
