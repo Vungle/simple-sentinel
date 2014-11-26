@@ -1,7 +1,7 @@
 ## Changelog
 
 ### 0.1.0 (*2014 Nov 18*)
- - Initial "release". (Not on NPM yet)
+ - Initial release.
  - Random sentinel connection to a sentinel group.
  - Master / Slave detection for replica sets.
  - Push notifications from sentinel on configuration changes.
