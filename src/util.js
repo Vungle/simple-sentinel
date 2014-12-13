@@ -89,7 +89,7 @@ var LOGGER_TARGET = null;
  */
 function buildLogger(namespace) {
   namespace = String(namespace) + ":";
-  enabled = false;
+  var enabled = false;
 
   var out = function _log() {
     if ( ! enabled ) { return; }
