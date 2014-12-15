@@ -65,7 +65,8 @@ Will create the structure, and start the process of connecting.
 - `config` is an optional object used to store other configuration details. If omitted (or otherwise falsey) then only default values will be used. This object can contain:
     - `commandTimeout` (**Number**) is the maximum number of milliseconds that we'll wait for a command on this sentinel to return. Default is 1500.
     - `createClient` (**Function**) is the function that will create the `RedisClient`s that are returned to you. By default, this library will try to require() the [node-redis](https://github.com/mranney/node_redis) library from the scope of your project automagically, and use our own version if yours is unavailable. If you want to do something more advanced, then you can use this argument to override the default. The function will be called with the arguments: `(port, host, options)`.
-    - `debugLogging` (**Boolean**) is `true` if you want to see the noisy debug log. Default is `false`.
+    - `customLogger` (**Function**) is the function used when logging messages. This function will only be called if `debugLogging` is set to true. Is called with a single string argument: `(message)`. Default: `console.log`.
+    - `debugLogging` (**Boolean**) should be true if you want to see the noisy debug log. Default is `false`.
     - `outageRetryTimeout` (**Number**) is the number of milliseconds before trying again if ALL sentinels are down. If this number is negative, then we will simply emit an error instead of retrying. Default is 5000.
     - `randomizeSentinels` (**Boolean**) indicates whether the sentinels list should be shuffled before attempting connections. Default is true.
     - `redisOptions` (**Object**) is the object that is passed to createClient as options. Default is `{}`.

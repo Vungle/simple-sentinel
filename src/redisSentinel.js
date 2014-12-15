@@ -35,6 +35,7 @@ function RedisSentinel(sentinels, options) {
   var defaults = {
     commandTimeout:     1500,
     createClient:       (client_redis && client_redis.createClient) || redis.createClient,
+    customLogger:       null,
     debugLogging:       false,
     outageRetryTimeout: 5000,
     randomizeSentinels: true,

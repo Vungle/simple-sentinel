@@ -78,9 +78,6 @@ function timedCommand(client, timeout, cmd, opts, cb) {
 };
 
 
-var LOGGER_TARGET = null;
-
-
 /**
  * Will build a simple logger. Will write to stdout IFF we were told to in the user configs.
  * Arguments are the same format as for node util's format function, with the exception that
@@ -88,8 +85,10 @@ var LOGGER_TARGET = null;
  * otherwise.
  */
 function buildLogger(namespace) {
-  namespace = String(namespace) + ":";
-  var enabled = false;
+  namespace = String(namespace) + ": ";
+  
+  var enabled   = false
+    , logger_fn = console.log.bind(console);
 
   var out = function _log() {
     if ( ! enabled ) { return; }
@@ -102,11 +101,14 @@ function buildLogger(namespace) {
       }
     }
     var str = util.format.apply(util, arguments);
-    LOGGER_TARGET(namespace, str);
+    logger_fn(namespace + str);
   };
 
   out.configure = function configure(options) {
     enabled = !! (options.debugLogging);
+    if (typeof options.customLogger === 'function') {
+      logger_fn = options.customLogger;
+    }
   };
 
   return out;
@@ -120,19 +122,6 @@ util.parentRequire = parentRequire;
 util.shuffleArray  = shuffleArray;
 util.timedCommand  = timedCommand;
 util.buildLogger   = buildLogger;
-
-
-// Useful for testing:
-util.customLoggerTarget = function (custom_target) {
-  if (!custom_target) {
-    LOGGER_TARGET = console.log.bind(console);
-    return;
-  }
-  LOGGER_TARGET = custom_target;
-};
-
-// Use that custom target thing to set up the initial target:
-util.customLoggerTarget(null);
 
 
 module.exports = util;

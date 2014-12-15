@@ -74,16 +74,13 @@ describe('Util', function () {
     
     var last_log = null;
     
-    beforeEach(function () {
-      util.customLoggerTarget(function () {
-        last_log = [].slice.call(arguments, 0).join(" ");
-      });
-    });
+    function _customLogger(msg) {
+      last_log = msg;
+    }
 
     afterEach(function () {
-      util.customLoggerTarget(null);
-    });
-
+      last_log = null;
+    })
 
     it("will create a muted log", function () {
       var logger = util.buildLogger("Derp");
@@ -93,14 +90,14 @@ describe('Util', function () {
 
     it("can unmute a log", function () {
       var logger = util.buildLogger("Derp");
-      logger.configure({debugLogging: true});
+      logger.configure({debugLogging: true, customLogger: _customLogger});
       logger("Sup");
       expect(last_log).toBe("Derp: Sup");
     });
 
     it("will accept formatting stuff", function () {
       var logger = util.buildLogger("Derp");
-      logger.configure({debugLogging: true});
+      logger.configure({debugLogging: true, customLogger: _customLogger});
       logger("Hello %s!!!%d!", "World", 1);
       expect(last_log).toBe("Derp: Hello World!!!1!");
     });
@@ -108,7 +105,7 @@ describe('Util', function () {
     describe("with errors", function () {
       it("will show stack traces if available", function () {
         var logger = util.buildLogger("Derp");
-        logger.configure({debugLogging: true});
+        logger.configure({debugLogging: true, customLogger: _customLogger});
         logger("Error encountered:", new Error("I AM AN ERROR"));
         expect(last_log).toMatch(/^Derp: Error encountered: /);
         expect(last_log).toMatch(/I AM AN ERROR/);
@@ -119,7 +116,7 @@ describe('Util', function () {
         var logger = util.buildLogger("Derp");
         var err = new Error("I AM AN ERROR");
         delete err.stack;
-        logger.configure({debugLogging: true});
+        logger.configure({debugLogging: true, customLogger: _customLogger});
         logger("Error encountered:", err);
         expect(last_log).toMatch(/^Derp: Error encountered: /);
         expect(last_log).toMatch(/I AM AN ERROR/);
