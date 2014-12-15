@@ -375,10 +375,13 @@ describe('RedisReplica', function () {
           {name: "lol", ip: "10.0.0.1", port: 6381, flags: ["slave"]}
         ]);
         var res = repl.connectAllSlaves();
-        expect(res).toBeAn(Array);
+
+        expect(res)
+          .toBeAn(Array)
+          .toContain("10.0.0.1:6379")
+          .toContain("10.0.0.1:6381");
+
         expect(res.length).toBe(2);
-        expect(res).toContain("10.0.0.1:6379");
-        expect(res).toContain("10.0.0.1:6381");
       });
     });
   });
@@ -394,14 +397,16 @@ describe('RedisReplica', function () {
       var repl = new RedisReplica("lol", null, {});
       
       repl._loadMasterConfig({name: "lol", ip: "127.0.0.1", port: 6379, flags: ["master"]});
-      var str = repl.toString();
-      expect(str).toMatch(/RedisReplica/i);
-      expect(str).toMatch(/127\.0\.0\.1:6379 UP/);
+      
+      expect(repl.toString())
+        .toMatch(/RedisReplica/i)
+        .toMatch(/127\.0\.0\.1:6379 UP/);
       
       repl._loadMasterConfig({name: "lol", ip: "127.0.0.1", port: 6379, flags: ["master", "o_down"]});
-      str = repl.toString();
-      expect(str).toMatch(/RedisReplica/i);
-      expect(str).toMatch(/127\.0\.0\.1:6379 DOWN/);
+      
+      expect(repl.toString())
+        .toMatch(/RedisReplica/i)
+        .toMatch(/127\.0\.0\.1:6379 DOWN/);
     });
 
     it("works with slaves", function () {
@@ -411,11 +416,12 @@ describe('RedisReplica', function () {
         {name: "lol", ip: "10.0.0.1", port: 6380, flags: ["slave", "s_down"]},
         {name: "lol", ip: "10.0.0.1", port: 6381, flags: ["slave"]}
       ]);
-      var str = repl.toString();
-      expect(str).toMatch(/RedisReplica/i);
-      expect(str).toMatch(/10\.0\.0\.1:6379 UP/);
-      expect(str).toMatch(/10\.0\.0\.1:6380 DOWN/);
-      expect(str).toMatch(/10\.0\.0\.1:6381 UP/);
+      
+      expect(repl.toString())
+        .toMatch(/RedisReplica/i)
+        .toMatch(/10\.0\.0\.1:6379 UP/)
+        .toMatch(/10\.0\.0\.1:6380 DOWN/)
+        .toMatch(/10\.0\.0\.1:6381 UP/);
     });
   });
 });

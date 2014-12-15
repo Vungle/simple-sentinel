@@ -30,6 +30,7 @@ function RedisConfigFetcher(host, port, config) {
   this.is_fetching = false;
   this.needs_another = false;
 
+  this._log = util.buildLogger("RedisConfigFetcher");
   this._log.configure(config);
 
   var redis_config = {
@@ -71,9 +72,6 @@ function RedisConfigFetcher(host, port, config) {
 }
 
 util.inherits(RedisConfigFetcher, events.EventEmitter);
-
-
-RedisConfigFetcher.prototype._log = util.buildLogger("RedisConfigFetcher");
 
 
 /**

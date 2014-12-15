@@ -91,8 +91,11 @@ describe("RedisConfigFetcher", function () {
         commandTimeout: 50
       });
       rcf.on('error', function (err) {
-        expect(err.message).toMatch(/timed out/i);
-        expect(err.message).toMatch(/INFO/i);
+
+        expect(err.message)
+          .toMatch(/timed out/i)
+          .toMatch(/INFO/i);
+
         done();
       });
       client.emit('ready');
@@ -154,12 +157,18 @@ describe("RedisConfigFetcher", function () {
 
   describe("when parsing a server list", function () {
     
-    var rcf = new RedisConfigFetcher("localhost", 6379, { _testClient: new FakeClient() });
-    rcf._log = function () {
-      last_log = [].slice.call(arguments, 0).join(" ");
-    }
-
     var last_log = null;
+    
+    function _customLogger (msg) {
+      last_log = msg;
+    }
+    
+    var rcf = new RedisConfigFetcher("localhost", 6379, {
+      customLogger: _customLogger,
+      debugLogging: true,
+      _testClient: new FakeClient()
+    });
+
     beforeEach(function () {
       last_log = null;
     });
@@ -167,31 +176,31 @@ describe("RedisConfigFetcher", function () {
     it("rejects bad types", function () {
       var res = rcf._parseServerList("Master", null);
       expect(res).toBe(null);
-      expect(last_log).toBe("Master list rejected: Bad input");
+      expect(last_log).toBe("RedisConfigFetcher: Master list rejected: Bad input");
     });
 
     it("rejects odd number of items in list", function () {
       var res = rcf._parseServerList("Master", [["name", "derp", "foobar"]]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Master list rejected: Malformed row");
+      expect(last_log).toBe("RedisConfigFetcher: Master list rejected: Malformed row");
     });
 
     it("rejects dupe properties", function () {
       var res = rcf._parseServerList("Master", [["name", "derp", "hello", "world", "name", "not derp"]]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Master list rejected: Row had duplicate property");
+      expect(last_log).toBe("RedisConfigFetcher: Master list rejected: Row had duplicate property");
     });
 
     it("rejects non-numeric ports", function () {
       var res = rcf._parseServerList("Master", [["name", "derp", "port", "foobar", "thing", "blahblah"]]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Master list rejected: Row has a non-numeric port");
+      expect(last_log).toBe("RedisConfigFetcher: Master list rejected: Row has a non-numeric port");
     });
 
     it("rejects missing name", function () {
       var res = rcf._parseServerList("Master", [["port", "1234", "thing", "blahblah"]]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Master list rejected: Row lacked a name property");
+      expect(last_log).toBe("RedisConfigFetcher: Master list rejected: Row lacked a name property");
     });
 
     it("parses ports as numbers", function () {
@@ -203,11 +212,12 @@ describe("RedisConfigFetcher", function () {
 
     it("parses flags as array", function () {
       var res = rcf._parseServerList("Master", [["name", "derp", "flags", "master,s_down,o_down", "thing", "blahblah"]]);
-      expect(!!res).toBe(true);
-      expect(res[0].flags).toBeAn(Array);
-      expect(res[0].flags).toContain("master");
-      expect(res[0].flags).toContain("s_down");
-      expect(res[0].flags).toContain("o_down");
+      expect(res).toExist();
+      expect(res[0].flags)
+        .toBeAn(Array)
+        .toContain("master")
+        .toContain("s_down")
+        .toContain("o_down");
       expect(last_log).toBe(null);
     });
 
@@ -216,29 +226,40 @@ describe("RedisConfigFetcher", function () {
         ["name", "herp", "ip", "127.0.0.1", "flags", "master,s_down,o_down"],
         ["name", "derp", "ip", "127.0.0.2", "flags", "master"]
       ]);
-      expect(!!res).toBe(true);
+      expect(res).toExist();
       expect(res[0].name).toBe("herp");
       expect(res[1].name).toBe("derp");
       expect(res[0].ip).toBe("127.0.0.1");
       expect(res[1].ip).toBe("127.0.0.2");
-      expect(res[0].flags).toBeAn(Array);
-      expect(res[1].flags).toBeAn(Array);
-      expect(res[0].flags).toContain("master");
-      expect(res[0].flags).toContain("s_down");
-      expect(res[0].flags).toContain("o_down");
-      expect(res[1].flags).toContain("master");
+
+      expect(res[0].flags)
+        .toBeAn(Array)
+        .toContain("master")
+        .toContain("s_down")
+        .toContain("o_down");
+      
+      expect(res[1].flags)
+        .toBeAn(Array)
+        .toContain("master");
+
       expect(last_log).toBe(null);
     });
   });
 
   describe("when building a lookup", function () {
 
-    var rcf = new RedisConfigFetcher("localhost", 6379, { _testClient: new FakeClient() });
-    rcf._log = function () {
-      last_log = [].slice.call(arguments, 0).join(" ");
-    }
-
     var last_log = null;
+    
+    function _customLogger (msg) {
+      last_log = msg;
+    }
+    
+    var rcf = new RedisConfigFetcher("localhost", 6379, {
+      customLogger: _customLogger,
+      debugLogging: true,
+      _testClient: new FakeClient()
+    });
+
     beforeEach(function () {
       last_log = null;
     });
@@ -252,29 +273,33 @@ describe("RedisConfigFetcher", function () {
     it("fails on non-arrays", function () {
       var res = rcf._buildLookup({a: "lol"});
       expect(res).toBe(null);
-      expect(last_log).toBe("Failed to build lookup: Non-array provided");
+      expect(last_log).toBe("RedisConfigFetcher: Failed to build lookup: Non-array provided");
     });
 
     it("fails when something lacks a name", function () {
       var res = rcf._buildLookup([{a: "lol"}]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Failed to build lookup: Item # 0 has no name");
+      expect(last_log).toBe("RedisConfigFetcher: Failed to build lookup: Item # 0 has no name");
     });
 
     it("fails with duplicate names", function () {
       var res = rcf._buildLookup([{name: "lol"}, {name: "derp"}, {name: "lol"}]);
       expect(res).toBe(null);
-      expect(last_log).toBe("Failed to build lookup: Duplicate name in array: lol");
+      expect(last_log).toBe("RedisConfigFetcher: Failed to build lookup: Duplicate name in array: lol");
     });
 
     it("works when everything is ok", function () {
       var res = rcf._buildLookup([{name: "lol", ip: "123.45.67.89"}, {name: "derp", ip: "98.76.54.32"}]);
-      expect(!!res).toBe(true);
-      expect(res).toBeAn(Object);
-      expect(!!res.lol).toBe(true);
-      expect(!!res.derp).toBe(true);
+      
+      expect(res)
+        .toExist()
+        .toBeAn(Object);
+
+      expect(res.lol).toExist();
+      expect(res.derp).toExist();
       expect(res.lol.ip).toBe("123.45.67.89");
       expect(res.derp.ip).toBe("98.76.54.32");
+
       expect(last_log).toBe(null);
     });
   });
@@ -315,8 +340,9 @@ describe("RedisConfigFetcher", function () {
       });
       
       rcf.on('error', function (err) {
-        expect(err.message).toMatch(/timed out/i);
-        expect(err.message).toMatch(/sentinel masters/i);
+        expect(err.message)
+          .toMatch(/timed out/i)
+          .toMatch(/sentinel masters/i);
         done();
       });
 
@@ -346,8 +372,9 @@ describe("RedisConfigFetcher", function () {
       });
       
       rcf.on('error', function (err) {
-        expect(err.message).toMatch(/timed out/i);
-        expect(err.message).toMatch(/sentinel slaves foo/i);
+        expect(err.message)
+          .toMatch(/timed out/i)
+          .toMatch(/sentinel slaves foo/i);
         done();
       });
 

@@ -118,8 +118,9 @@ describe('Util', function () {
         delete err.stack;
         logger.configure({debugLogging: true, customLogger: _customLogger});
         logger("Error encountered:", err);
-        expect(last_log).toMatch(/^Derp: Error encountered: /);
-        expect(last_log).toMatch(/I AM AN ERROR/);
+        expect(last_log)
+          .toMatch(/^Derp: Error encountered: /)
+          .toMatch(/I AM AN ERROR/);
       });
     });
   });
@@ -132,10 +133,13 @@ describe('Util', function () {
       var a = [1,2,3,4,5,6,7,8,9];
       var res = util.shuffleArray(a);
       
-      expect(!!a).toBe(true);
-      expect(!!res).toBe(true);
-      expect(a).toBeAn(Array);
-      expect(res).toBeAn(Array);
+      expect(a)
+        .toExist()
+        .toBeAn(Array);
+
+      expect(res)
+        .toExist()
+        .toBeAn(Array);
 
       for (var idx in a) {
         expect(a[idx]).toBe(res[idx], "Shuffled arrays differ at index " + idx);
@@ -158,8 +162,9 @@ describe('Util', function () {
         // Good ones will split evenly between the 24 possible permutations,
         // so 2000 each. Bad shuffles will accidentally give some orderings
         // preference, so we use 1700 and 2300 as cutoffs.
-        expect(ours[perm]).toBeGreaterThan(1700, "Detected a shuffle bias for: " + perm);
-        expect(ours[perm]).toBeLessThan   (2300, "Detected a shuffle bias for: " + perm);
+        expect(ours[perm])
+          .toBeGreaterThan(1700, "Detected a shuffle bias for: " + perm)
+          .toBeLessThan   (2300, "Detected a shuffle bias for: " + perm);
       });
     });
   });

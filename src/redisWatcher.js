@@ -43,6 +43,7 @@ function RedisWatcher(host, port, config) {
 
   this.timeout = undefined;
 
+  this._log = util.buildLogger("RedisWatcher");
   this._log.configure(config);
 
   var redis_config = {
@@ -68,8 +69,6 @@ function RedisWatcher(host, port, config) {
 
 util.inherits(RedisWatcher, events.EventEmitter);
 
-
-RedisWatcher.prototype._log = util.buildLogger("RedisWatcher");
 
 /** 
  * Will halt the updater, closing all connections and freeing all assets.

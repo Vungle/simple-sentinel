@@ -97,7 +97,7 @@ function buildLogger(namespace) {
     for (i=0; i<len; i++) {
       var arg = arguments[i];
       if (arg instanceof Error) {
-        arguments[i] = (arg.stack) ? arg.stack : String(arg);
+        arguments[i] = arg.stack || String(arg);
       }
     }
     var str = util.format.apply(util, arguments);

@@ -79,9 +79,10 @@ describe("RedisSentinel", function () {
       var s = new RedisSentinel([{host:"127.0.0.1", port: 6323}]);
       var default_val = s.options.outageRetryTimeout;
       s = new RedisSentinel([{host:"127.0.0.1", port: 6323}], conf);
-      var now_val = s.options.outageRetryTimeout;
-      expect(now_val).toBe(-1);
-      expect(now_val).toNotBe(default_val);
+      
+      expect(s.options.outageRetryTimeout)
+        .toBe(-1)
+        .toNotBe(default_val);
     });
 
     it("will allow a client redis lib to be injected", function () {
@@ -101,8 +102,9 @@ describe("RedisSentinel", function () {
       function _equal(a, b) { return (a.host === b.host && a.port === b.port); };
 
       expect(s.sentinels.length).toBe(2);
-      expect(s.sentinels).toContain({ host:"127.0.0.1", port: 26379 }, _equal);
-      expect(s.sentinels).toContain({ host:"127.0.1.2", port: 6323 }, _equal);
+      expect(s.sentinels)
+        .toContain({ host:"127.0.0.1", port: 26379 }, _equal)
+        .toContain({ host:"127.0.1.2", port: 6323 }, _equal);
     });
 
     it("works as both a constructor and a function call", function () {

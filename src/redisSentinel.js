@@ -50,6 +50,7 @@ function RedisSentinel(sentinels, options) {
   // Make sure that the outside can't inject a test client:
   delete this.options._testClient;
 
+  this._log = util.buildLogger("RedisSentinel");
   this._log.configure(this.options);
 
   this._log("Initialization started. Has client redis:", !!client_redis);
@@ -99,11 +100,6 @@ RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) 
     }
   });
 };
-
-
-
-// Logger:
-RedisSentinel.prototype._log = util.buildLogger("RedisSentinel");
 
 
 /**
