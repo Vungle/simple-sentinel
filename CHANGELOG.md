@@ -1,5 +1,9 @@
 ## Changelog
 
+### 0.1.2 (*2014 Dec 14*)
+ - Fixed write-to-global bug in the logging logic.
+ - Added ability to use custom logging functions.
+
 ### 0.1.1 (*2014 Nov 26*)
  - NPM release.
  - Doc updates.
