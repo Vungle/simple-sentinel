@@ -114,6 +114,27 @@ Will create a connection to a random available slave in the Replica Set. A slave
 
 Will create connections to all available slaves in a Replica Set. A slave is unavailable if the Sentinel describes this server as being subjectively down. Returns an Array of brand-new `RedisClient`s. Useful if you want to implement any round-robin load balancing, or what-have-you. This Array will be empty if no slaves are currently connectable.
 
+##### Function: getMasterConfig()
+
+Will fetch the connection information for the current master in the Replica Set. If the master is available, then returns an Object with the keys:
+- `host` (**String**) is the hostname of the master. Should usually be an IP address.
+- `port` (**Number**) is the port to connect to.
+
+Returns `null` when master is unavailable.
+
+##### Function: getSlaveConfig()
+
+Will fetch the connection information for a random slave in the Replica Set. If a slave is available, then returns an Object with the keys:
+- `host` (**String**) is the hostname of the slave. Should usually be an IP address.
+- `port` (**Number**) is the port to connect to.
+
+Returns `null` when all slaves are down.
+
+##### Function: getAllSlaveConfigs()
+
+Will fetch the connection information for all available slaves in the Replica Set. Returns an array of Objects, where each object has keys:
+- `host` (**String**) is the hostname of the slave. Should usually be an IP address.
+- `port` (**Number**) is the port to connect to.
 
 ### License
 
