@@ -74,20 +74,20 @@ Will open the connection to one of the sentinels in the 'sentinels' array.
     - `timeout` (**Number**) is the connect timeout in milliseconds for connecting to a sentinel server. Default is 500.
     - `watchedNames` (**Array**) is an Array of the String names of Replicas to watch. Default is to watch everything that a sentinel is currently watching.
 
+##### Event: "change"
+
+Emitted whenever the connection information for a Replica Set has changed. Use this event to build RedisClient's for all of the servers that you're keeping track of. This will also be emitted during startup, so you can connect to Redis quickly.
+
+Has arguments: `(name, replica)`
+- `name` (**String**) is name of a watched Replica.
+- `replica` (**RedisReplica**) is a `RedisReplica` object. Use this object to connect to masters or slaves. For the full API, [see below](#redisreplica).
+
 ##### Event: "error"
 
 Emitted when there was an internal error, or if all redis-sentinels are down and retries have been disabled.
 
 Has arguments: `(error)`
 - `error` is an Error object. Big surprise. :)
-
-##### Event: "change"
-
-Emitted when the connection information around a Replica has changed. This will also be emitted during the initial startup, when we get the Replica configurations for the first time. Use this to get information on the Replicas that you're keeping track of.
-
-Has arguments: `(name, replica)`
-- `name` (**String**) is name of a watched Replica.
-- `replica` (**RedisReplica**) is the `RedisReplica` for the given name (see below).
 
 ##### Event: "event"
 
