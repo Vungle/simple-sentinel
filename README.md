@@ -1,12 +1,12 @@
 simple-sentinel [![Build Status](https://travis-ci.org/Vungle/simple-sentinel.svg?branch=master)](https://travis-ci.org/Vungle/simple-sentinel)
 ===============
 
-An easy to use redis-sentinel client for Node.js. Features include:
+A stable, and easy to use redis-sentinel client for Node.js. Features include:
 
  - Simple, event-based API.
  - Randomized connections to sentinels, and automatic reconnection on sentinel failure.
- - Push notifications from sentinel on config changes.
- - Simple up / down detection on RedisClient connection.
+ - Uses Sentinel's Pub/Sub commands for real-time config updates during failovers.
+ - Uses Sentinel info to help dodge outages.
 
 ### Installing
 
@@ -27,7 +27,7 @@ var sentinels = [
 ];
 
 var options = {
-  // Omit this to track everything that the chosen sentinel knows about:
+  // Omit this to track all servers that the sentinel knows about:
   watchedNames: ["replica_a", "replica_b", "replica_d"]
 };
 
@@ -52,11 +52,11 @@ sentinel.on('change', function (name, replica) {
 
 #### RedisSentinel
 
-This represents a connection to a cluster of redis-sentinels. It is an EventEmitter, and will notify you in the case of state-changes, or problems.
+This object is used to connect to a redis-sentinel cluster. It is an EventEmitter, and will notify you about outages or failovers as they happen.
 
 ##### Constructor: (sentinels, config)
 
-Will create the structure, and start the process of connecting.
+Will open the connection to one of the sentinels in the 'sentinels' array.
 
 - `sentinels` is an Array of objects, each with connection info for a single redis-sentinel. These objects should contain:
     - `host` (**String**) is the hostname to connect to.
