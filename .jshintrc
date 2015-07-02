@@ -1,0 +1,19 @@
+{
+  "node": true,
+  "mocha": true,
+
+  "curly": true,
+  "eqeqeq": true,
+  "forin": true,
+  "latedef": "nofunc",
+  "noarg": true,
+  "nonbsp": true,
+  "nonew": true,
+  "notypeof": true,
+  "singleGroups": true,
+  "undef": true,
+  "unused": true,
+
+  "laxbreak": true,
+  "laxcomma": true
+}
