@@ -1,6 +1,6 @@
 {
   "name": "simple-sentinel",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "An easy to use redis-sentinel client for Node.js",
   "contributors": [
     "Raymond Myers <raydog87@gmail.com>",
@@ -33,7 +33,7 @@
   "devDependencies": {
     "mocha": "2.2.5",
     "expect": "1.6.0",
-    "istanbul":  "0.3.5",
+    "istanbul": "0.3.5",
     "random-seed": "0.2.0",
     "boris": "0.12.6",
     "temp": "0.8.2"
