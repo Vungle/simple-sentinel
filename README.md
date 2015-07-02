@@ -17,6 +17,8 @@ npm install --save simple-sentinel
 ### Sample Code
 
 ```javascript
+var RedisSentinel = require('simple-sentinel');
+
 // Put all sentinel servers in here. A random one will be used:
 var sentinels = [
   { host: '10.2.3.41', port: 26379 },
