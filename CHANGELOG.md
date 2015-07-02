@@ -1,7 +1,8 @@
 ## Changelog
 
-### 0.2.0 (*2015 Jul 1*)
- - Added API to get connection info without connecting. 
+### 0.2.0 (*2015 Jul 2*)
+ - Added API to get connection info without connecting.
+ - Fixed a minor bug with error handling.
 
 ### 0.1.2 (*2014 Dec 14*)
  - Fixed write-to-global bug in the logging logic.
