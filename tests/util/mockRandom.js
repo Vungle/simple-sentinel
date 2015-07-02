@@ -9,10 +9,10 @@ var rand = require('random-seed');
 var SAVED_SEED = 382948;
 
 module.exports.installHooks = function () {
-  
+
   // Swap out Math.random before tests:
   var saved_random = null;
-  var rand_engine = null;;
+  var rand_engine = null;
 
   before(function initRNG() {
     rand_engine = rand.create(SAVED_SEED);

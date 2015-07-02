@@ -8,7 +8,7 @@ var util    = _.extend({}, node_util);
 
 /**
  * Will try to require something from a parent module.
- * 
+ *
  * @param  {String} module_name The name of the module to require. Like the args to a normal require.
  * @return {Object}             The require()-ed module, or null if we couldn't find it at any level.
  */
@@ -24,14 +24,14 @@ function parentRequire(module_name) {
       m = m.parent;
     }
   }
-  
+
   return null;
 }
 
 
 /**
  * Will shuffle an array in-place with the Fisher-Yates algorithm.
- * 
+ *
  * @param  {Array} arr The array to shuffle
  * @return {Array}     The array, for convenience.
  */
@@ -50,9 +50,9 @@ function shuffleArray(arr) {
 }
 
 
-/** 
+/**
  * Will dispatch a Redis command that can time out.
- * 
+ *
  * @param  {RedisClient} client  The redis client to use.
  * @param  {Number}      timeout The number of milliseconds to wait.
  * @param  {String}      cmd     The command name.
@@ -75,7 +75,7 @@ function timedCommand(client, timeout, cmd, opts, cb) {
     clearTimeout(cmd_timeout);
     cb.apply(null, arguments);
   });
-};
+}
 
 
 /**
@@ -86,26 +86,27 @@ function timedCommand(client, timeout, cmd, opts, cb) {
  */
 function buildLogger(namespace) {
   namespace = String(namespace) + ": ";
-  
+
   var enabled   = false
     , logger_fn = console.log.bind(console);
 
   var out = function _log() {
     if ( ! enabled ) { return; }
 
-    var i, len = arguments.length;
+    var args = [].slice.call(arguments, 0);
+    var i, len = args.length;
     for (i=0; i<len; i++) {
-      var arg = arguments[i];
+      var arg = args[i];
       if (arg instanceof Error) {
-        arguments[i] = arg.stack || String(arg);
+        args[i] = arg.stack || String(arg);
       }
     }
-    var str = util.format.apply(util, arguments);
+    var str = util.format.apply(util, args);
     logger_fn(namespace + str);
   };
 
   out.configure = function configure(options) {
-    enabled = !! (options.debugLogging);
+    enabled = !! options.debugLogging;
     if (typeof options.customLogger === 'function') {
       logger_fn = options.customLogger;
     }

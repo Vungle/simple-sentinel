@@ -38,7 +38,7 @@ describe("RedisWatcher", function () {
       _testClient: new FakeClient(),
       refreshTimeout: 75
     });
-    
+
     var count = 0;
     w.on('refresh', function () {
       // 1 init + 75 ms + 150ms
@@ -54,7 +54,7 @@ describe("RedisWatcher", function () {
       _testClient: fake_client,
       refreshTimeout: 500
     });
-    
+
     fake_client.emit('ready');
 
     w.once('refresh', function () {
@@ -71,7 +71,7 @@ describe("RedisWatcher", function () {
       _testClient: fake_client,
       refreshTimeout: 500
     });
-    
+
     fake_client.emit('ready');
 
     w.once('refresh', function () {
@@ -92,7 +92,7 @@ describe("RedisWatcher", function () {
       _testClient: fake_client,
       refreshTimeout: 500
     });
-    
+
     w.once('error', function (err) {
       expect(err.message).toBe("LOL HI");
       done();
@@ -100,15 +100,15 @@ describe("RedisWatcher", function () {
 
     fake_client.emit('error', new Error("LOL HI"));
   });
-  
+
   it("emits 'error' on hangup", function (done) {
     var fake_client = new FakeClient();
     w = new RedisWatcher("localhost", 6379, {
       _testClient: fake_client,
       refreshTimeout: 500
     });
-    
-    w.once('error', function (err) {
+
+    w.once('error', function () {
       done();
     });
 
@@ -136,7 +136,7 @@ describe("RedisWatcher", function () {
       if (++times_emitted !== 1) {
         throw new Error("Multiple emits");
       }
-    })
+    });
 
     w.kill();
 

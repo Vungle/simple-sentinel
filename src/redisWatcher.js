@@ -29,7 +29,7 @@ var USEFUL_EVENTS = RELOAD_EVENTS.concat(INTERESTING_EVENTS);
 /**
  * Will create a RedisWatcher object, which opens the pub/sub channel
  * with a sentinel, and emits events when things should happen.
- * 
+ *
  * @param {String} host    The host to connect to.
  * @param {Number} port    The port num.
  * @param {Number} config  The config object passed to the RedisSentinel.
@@ -70,7 +70,7 @@ function RedisWatcher(host, port, config) {
 util.inherits(RedisWatcher, events.EventEmitter);
 
 
-/** 
+/**
  * Will halt the updater, closing all connections and freeing all assets.
  * @param  {Error} err  An error to emit when done. Optional.
  */
@@ -83,7 +83,7 @@ RedisWatcher.prototype.kill = function (err) {
   this.timeout = undefined;
   this.emit("error", err);
   this._log("Closed connection to %s:%d", this.host, this.port);
-}
+};
 
 
 RedisWatcher.prototype._handleClientError = function _handleClientError(err) {
@@ -100,7 +100,7 @@ RedisWatcher.prototype._handleClientHangup = function _handleClientHangup() {
 
 RedisWatcher.prototype._handleConnectReady = function _handleConnectReady() {
   if (this.finalized) { return; }
-  
+
   var watcher = this;
 
   // Start listening for interesting events:
@@ -129,7 +129,7 @@ RedisWatcher.prototype._resetTimer = function _resetTimer() {
   var watcher = this;
 
   clearTimeout(this.timeout);
-  
+
   this.timeout = setTimeout(function () {
     watcher._log("Refreshing due to timeout");
     watcher.emit('refresh');

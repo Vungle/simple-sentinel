@@ -5,7 +5,7 @@ var RedisSentinel_lib = require('../src/redisSentinel')
   , expect = require('expect');
 
 describe("RedisSentinel", function () {
-  
+
   describe("when validating a sentinel array", function () {
 
     var validate = RedisSentinel._validateSentinelList;
@@ -70,7 +70,7 @@ describe("RedisSentinel", function () {
 
     it("rejects a bad sentinel list", function () {
       expect(function () {
-        var s = new RedisSentinel([], {outageRetryTimeout: -1});
+        var s = new RedisSentinel([], {outageRetryTimeout: -1}); // jshint ignore:line
       }).toThrow(/empty/);
     });
 
@@ -79,7 +79,7 @@ describe("RedisSentinel", function () {
       var s = new RedisSentinel([{host:"127.0.0.1", port: 6323}]);
       var default_val = s.options.outageRetryTimeout;
       s = new RedisSentinel([{host:"127.0.0.1", port: 6323}], conf);
-      
+
       expect(s.options.outageRetryTimeout)
         .toBe(-1)
         .toNotBe(default_val);
@@ -99,7 +99,7 @@ describe("RedisSentinel", function () {
         { host:"127.0.0.1" }
       ]);
 
-      function _equal(a, b) { return (a.host === b.host && a.port === b.port); };
+      function _equal(a, b) { return a.host === b.host && a.port === b.port; }
 
       expect(s.sentinels.length).toBe(2);
       expect(s.sentinels)
@@ -116,7 +116,7 @@ describe("RedisSentinel", function () {
   });
 
   describe("when connecting", function () {
-    
+
     var DEBUG_LOGGING = false;
 
     var mocks = [];
@@ -124,12 +124,12 @@ describe("RedisSentinel", function () {
 
     // Be sure to have plenty of clean-up:
     beforeEach(function () {
-      mocks = [new MockSentinel(), new MockSentinel, new MockSentinel()];
+      mocks = [new MockSentinel(), new MockSentinel(), new MockSentinel()];
       sentinel = null;
     });
     afterEach (function () {
       mocks.forEach(function (p) { p.kill(); });
-      sentinel && sentinel.kill();
+      if (sentinel) { sentinel.kill(); }
     });
 
     // Used for starting the first n mock Sentinels:
@@ -140,7 +140,7 @@ describe("RedisSentinel", function () {
           mock.start(done);
         },
         cb
-      )
+      );
     }
 
     // A createClient that only encodes the info thrown at it:
@@ -156,7 +156,7 @@ describe("RedisSentinel", function () {
 
       startNMocks(1, function (err, ports) {
         if (err) { return done(err); }
-        
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
@@ -184,11 +184,11 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-        
+
         // Kill the first server fast, but keep using its port. That way, the connection gets refused:
         mocks[0].kill(function (err) {
           if (err) { return done(err); }
-          
+
           // Try a connection?
           var s_conf = {
             outageRetryTimeout: -1,
@@ -224,7 +224,7 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
@@ -236,7 +236,7 @@ describe("RedisSentinel", function () {
         };
 
         // We use MockSentinel 0 because it'll timeout on the INFO command:
-        
+
         var s_list = [
           {host:"127.0.0.1", port: ports[0]},
           {host:"127.0.0.1", port: ports[1]}
@@ -265,7 +265,7 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
@@ -275,7 +275,7 @@ describe("RedisSentinel", function () {
           commandTimeout: 250,
           timeout: 100
         };
-        
+
         var s_list = [
           {host:"127.0.0.1", port: ports[0]},
           {host:"127.0.0.1", port: ports[1]}
@@ -304,10 +304,9 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
-          outageRetryTimeout: -1,
           createClient: testCreateClient,
           randomizeSentinels: false,
           debugLogging: DEBUG_LOGGING,
@@ -315,7 +314,7 @@ describe("RedisSentinel", function () {
           outageRetryTimeout: 100,
           timeout: 100
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
           { host:"127.0.0.1", port: ports[1]}
@@ -324,7 +323,7 @@ describe("RedisSentinel", function () {
         // Both mocks are 'normal's, so they'll fail. When the lib tries
         // to connect to the second, however, we'll change the type of the
         // first to 'sentinel' so that on second pass, it'll succeed.
-        
+
         var did_change_type = false;
         mocks[1].once('connection', function () {
           if (did_change_type) {
@@ -358,7 +357,7 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
@@ -366,10 +365,9 @@ describe("RedisSentinel", function () {
           randomizeSentinels: false,
           debugLogging: DEBUG_LOGGING,
           commandTimeout: 250,
-          outageRetryTimeout: -1,
           timeout: 100
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
           { host:"127.0.0.1", port: ports[1]}
@@ -400,17 +398,16 @@ describe("RedisSentinel", function () {
 
       startNMocks(3, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
           createClient: testCreateClient,
           debugLogging: DEBUG_LOGGING,
           commandTimeout: 250,
-          outageRetryTimeout: -1,
           timeout: 100
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
           { host:"127.0.0.1", port: ports[1]},
@@ -437,14 +434,14 @@ describe("RedisSentinel", function () {
 
       startNMocks(1, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
           createClient: testCreateClient,
           debugLogging: DEBUG_LOGGING
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
         ];
@@ -482,14 +479,14 @@ describe("RedisSentinel", function () {
 
       startNMocks(1, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
           createClient: testCreateClient,
           debugLogging: DEBUG_LOGGING
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
         ];
@@ -531,7 +528,7 @@ describe("RedisSentinel", function () {
 
       startNMocks(2, function (err, ports) {
         if (err) { return done(err); }
-          
+
         // Try a connection?
         var s_conf = {
           outageRetryTimeout: -1,
@@ -540,7 +537,7 @@ describe("RedisSentinel", function () {
           randomizeSentinels: false,
           commandTimeout: 100
         };
-        
+
         var s_list = [
           { host:"127.0.0.1", port: ports[0]},
           { host:"127.0.0.1", port: ports[1]},
@@ -562,8 +559,8 @@ describe("RedisSentinel", function () {
           });
 
           setTimeout(function () {
-            // Get the first sentinel to stop responding. Once the event is sent, the 
-            // lib should reconnect to the second sentinel, which has the correct 
+            // Get the first sentinel to stop responding. Once the event is sent, the
+            // lib should reconnect to the second sentinel, which has the correct
             // config to use.
             mocks[0].stopResponding();
             mocks[0].sendEvent("+odown", "master main 127.0.0.1 9001 #quorum 4/3");

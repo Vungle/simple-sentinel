@@ -27,7 +27,7 @@ RedisReplica._isDown = function _isDown(role, config) {
 
   // We're using O_DOWN for masters, S_DOWN for slaves as being the "down" criterea.
   // There might be a better value, but this'll do for now...
-  var look_for = (role === "master") ? "o_down" : "s_down";
+  var look_for = role === "master" ? "o_down" : "s_down";
   return (config.flags || []).indexOf(look_for) >= 0;
 };
 
@@ -47,9 +47,9 @@ RedisReplica.prototype._loadMasterConfig = function _loadConfigs(master) {
     , new_host = master && master.ip
     , new_port = master && master.port
     , new_dead = RedisReplica._isDown("master", master)
-    , has_changed = (old_host !== new_host)
-                 || (old_port !== new_port)
-                 || (old_dead !== new_dead);
+    , has_changed = old_host !== new_host
+                 || old_port !== new_port
+                 || old_dead !== new_dead;
 
   // Reject if the name changed and we have a non-null master config:
   if (master && master.name !== this.name) { throw new Error("Config loaded into wrong Replica!"); }
@@ -108,7 +108,7 @@ RedisReplica.prototype._loadSlaveConfigs = function _loadSlaveConfigs(slaves) {
   // Store and return:
   this.slaves = slaves;
   return has_changed;
-}
+};
 
 
 /**
@@ -186,7 +186,6 @@ RedisReplica.prototype.getAllSlaveConfigs = function getAllSlaveConfigs() {
     return ! RedisReplica._isDown("slave", slave);
   });
 
-  var repl = this;
   return living_slaves.map(function getConfig(slave) {
     return { host: slave.ip, port: slave.port };
   });

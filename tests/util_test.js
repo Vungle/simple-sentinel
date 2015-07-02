@@ -6,7 +6,7 @@ var util = require('../src/util')
   , expect = require('expect');
 
 describe('Util', function () {
-  
+
   it("extends the Node.js util lib", function () {
     expect(util.format).toBeA(Function);
     expect(util.inherits).toBeA(Function);
@@ -31,9 +31,9 @@ describe('Util', function () {
       // directory. We then test the ability of one file to use the parent
       // require function with a relative path, and make sure that the path
       // correctly evaluates from the parent directory.
-      // 
-      // We use sync functions here, because this is a test and I'm not insane. 
-      
+      //
+      // We use sync functions here, because this is a test and I'm not insane.
+
       var util_dir         = path.join(__dirname, "../src/util");
       var util_dir_escaped = util_dir.replace(/'/g, "\\'");
       var temp_dir         = temp.mkdirSync("sentinel_require_test");
@@ -42,10 +42,10 @@ describe('Util', function () {
       var test_start_path = path.join(temp_dir, "run_test.js");
 
       fs.mkdirSync(temp_subdir);
-  
+
       fs.writeFileSync(test_start_path,                  "module.exports=require('./dir');");
       fs.writeFileSync(path.join(temp_dir, "dep.js"),    "module.exports='root_dir';");
-      
+
       fs.writeFileSync(path.join(temp_subdir, "dep.js"), "module.exports='sub_dir';");
       fs.writeFileSync(path.join(temp_subdir, "index.js"),
         "var util = require('"+util_dir_escaped+"');\n" +
@@ -69,18 +69,18 @@ describe('Util', function () {
   });
 
   describe("when making a logger", function () {
-    
+
     // Swap out the console.log, so we don't get annoying output while testing:
-    
+
     var last_log = null;
-    
+
     function _customLogger(msg) {
       last_log = msg;
     }
 
     afterEach(function () {
       last_log = null;
-    })
+    });
 
     it("will create a muted log", function () {
       var logger = util.buildLogger("Derp");
@@ -132,7 +132,7 @@ describe('Util', function () {
     it("both edits in place and returns the shuffled array", function () {
       var a = [1,2,3,4,5,6,7,8,9];
       var res = util.shuffleArray(a);
-      
+
       expect(a)
         .toExist()
         .toBeAn(Array);
@@ -141,7 +141,7 @@ describe('Util', function () {
         .toExist()
         .toBeAn(Array);
 
-      for (var idx in a) {
+      for (var idx=0; idx<a.length; idx++) {
         expect(a[idx]).toBe(res[idx], "Shuffled arrays differ at index " + idx);
       }
     });

@@ -18,8 +18,6 @@ function RedisSentinel(sentinels, options) {
     return new RedisSentinel(sentinels, options);
   }
 
-  var sentinel = this;
-
   // Add in the things that will be asynchronously populated later:
   this.fetcher = null;
   this.watcher = null;
@@ -27,14 +25,14 @@ function RedisSentinel(sentinels, options) {
 
   // Keep track of death:
   this.terminated = false;
-  
+
   // Simple validation:
   RedisSentinel._validateSentinelList(sentinels);
 
   // Extend the default values with the custom parameters:
   var defaults = {
     commandTimeout:     1500,
-    createClient:       (client_redis && client_redis.createClient) || redis.createClient,
+    createClient:       client_redis && client_redis.createClient || redis.createClient,
     customLogger:       null,
     debugLogging:       false,
     outageRetryTimeout: 5000,
@@ -46,7 +44,7 @@ function RedisSentinel(sentinels, options) {
   };
 
   this.options = util._.extend(defaults, options);
-  
+
   // Make sure that the outside can't inject a test client:
   delete this.options._testClient;
 
@@ -75,11 +73,11 @@ util.inherits(RedisSentinel, events.EventEmitter);
 
 /**
  * Will do basic validation on a sentinel list. Throws if there was a problem.
- * 
+ *
  * @param  {Array} sentinels The sentinel list, from the user.
  */
 RedisSentinel._validateSentinelList = function _validateSentinelList(sentinels) {
-  
+
   // First, check type:
   if (!sentinels || !Array.isArray(sentinels)) {
     throw new TypeError("First argument needs to be an array of sentinel config objects");
@@ -123,7 +121,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
   util.async.forEachSeries(
     this.sentinels,
     function withEachSentinel(conf, next) {
-      
+
       var fetcher = sentinel.fetcher = new RedisConfigFetcher(conf.host, conf.port, sentinel.options)
         .once('error', _onError)
         .once('connected', _onConnect);
@@ -155,7 +153,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
           if (sentinel.terminated) { return; }
           sentinel.emit('event', channel, msg);
         }
-        
+
         function _onGetReplInfo(name, master, slaves) {
           if (sentinel.terminated) { return; }
 
@@ -182,7 +180,10 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
     },
     function (err) {
       if (sentinel.terminated) { return; }
-      if (err) { return cb(err); }
+      if (err) {
+        sentinel.emit("error", err);
+        return;
+      }
 
       // We made it through all endpoints. What do??
       if (sentinel.options.outageRetryTimeout < 0) {
@@ -202,7 +203,7 @@ RedisSentinel.prototype._connectSentinel = function _connectSentinel() {
 
 RedisSentinel.prototype._handleErrorAndReconnect = function _handleErrorAndReconnect(err) {
   if (this.terminated) { return; }
-  
+
   // Log the error:
   this._log("Error encountered:", err);
 

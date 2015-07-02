@@ -391,7 +391,7 @@ describe('RedisReplica', function () {
     var _conf = {"lol": 123};
 
     function makeCreateClient() {
-      return function _createClient(port, host, config) {
+      return function _createClient() {
         throw new Error("This shouldn't have been called...");
       };
     }

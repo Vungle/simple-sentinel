@@ -11,7 +11,7 @@ var util   = require('./util')
 /**
  * A RedisConfigFetcher is responsible for connecting to a sentinel, and pulling
  * down a configuration for either specific replica names or all tracked replicas.
- * 
+ *
  * @param {String} host    The host to connect to.
  * @param {Number} port    The port to connect to.
  * @param {Object} config  The config object passed to the RedisSentinel object.
@@ -40,7 +40,7 @@ function RedisConfigFetcher(host, port, config) {
   };
 
   var client = this.client = config._testClient || redis.createClient(port, host, redis_config);
-  
+
   client.on('error', function (err) {
     fetcher.kill(err);
   });
@@ -54,7 +54,7 @@ function RedisConfigFetcher(host, port, config) {
     if (fetcher.finalized) { return; }
 
     fetcher._log("Successfully connected to %s:%d", fetcher.host, fetcher.port);
-    
+
     // Validate the sucker with an INFO check:
     util.timedCommand(client, fetcher.cmd_to, "INFO", function (err, result) {
       if (err || fetcher.finalized) {
@@ -92,7 +92,7 @@ RedisConfigFetcher._isInfoResponseValid = function _isInfoResponseValid(info_dat
 };
 
 
-/** 
+/**
  * Will take in the response from a "SENTINEL MASTERS" command, and return a parsed struct.
  *
  * @param  {String} role   The role of the server, like "Master". Only used for logging.
@@ -108,7 +108,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
     this._log(ns, "Bad input");
     return null;
   }
-  
+
   for (i=0,len=result.length; i<len; i++) {
     var row = result[i], row_len, j, parsed_row = {};
 
@@ -116,7 +116,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
       this._log(ns, "Malformed row");
       return null;
     }
-    
+
     for (j=0,row_len=row.length; j<row_len; j+=2) {
       var key = row[j], value = row[j+1];
 
@@ -138,7 +138,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
       if (key === "flags") {
         value = value.split(",");
       }
-      
+
       parsed_row[key] = value;
     }
 
@@ -146,7 +146,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
       this._log(ns, "Row lacked a name property");
       return null;
     }
-    
+
     out.push(parsed_row);
   }
 
@@ -156,7 +156,7 @@ RedisConfigFetcher.prototype._parseServerList = function _parseServerList(role, 
 
 /**
  * Will build a lookup table for a list based on the "name" property of the contents.
- * 
+ *
  * @param  {Array} array An array of objects, such as those returned from _parseServerList()
  * @return {Object}      A lookup table of objects in array from the name property to the elements.
  *                       Returns null on failure or duplicates.
@@ -177,17 +177,17 @@ RedisConfigFetcher.prototype._buildLookup = function _buildLookup(array) {
   var i, len = array.length, out = {};
   for (i=0; i<len; i++) {
     var item = array[i];
-    
+
     if (!item.hasOwnProperty("name")) {
       this._log(ns, "Item #", i, "has no name");
       return null;
     }
-    
+
     if (out.hasOwnProperty(item.name)) {
       this._log(ns, "Duplicate name in array:", item.name);
       return null;
     }
-    
+
     out[item.name] = item;
   }
 
@@ -198,7 +198,7 @@ RedisConfigFetcher.prototype._buildLookup = function _buildLookup(array) {
 /**
  * Will stop the Config Fetcher and release its assets. If an error
  * is provided, it will be emitted on the error channel.
- * 
+ *
  * @param  {Error} err An optional error to emit.
  */
 RedisConfigFetcher.prototype.kill = function kill(err) {
@@ -295,7 +295,7 @@ RedisConfigFetcher.prototype.updateConfigs = function updateConfigs() {
       }
     );
   });
-}
+};
 
 
 module.exports = RedisConfigFetcher;

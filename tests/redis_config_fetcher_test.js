@@ -67,7 +67,7 @@ describe("RedisConfigFetcher", function () {
       rcf.on('error', function (err) {
         expect(err.message).toMatch(/lol test/i);
         done();
-      })
+      });
       client.emit('error', new Error("LOL TEST"));
     });
 
@@ -77,8 +77,9 @@ describe("RedisConfigFetcher", function () {
         _testClient: client
       });
       rcf.on('error', function (err) {
+        expect(err).toExist();
         done();
-      })
+      });
       client.emit('end');
     });
 
@@ -131,14 +132,14 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('connected', done);
       client.emit('ready');
     });
   });
 
   describe("when using isInfoResponseValid", function () {
-    
+
     it("detects null as non-sentinel", function () {
       var res = RedisConfigFetcher._isInfoResponseValid(null);
       expect(res).toBe(false);
@@ -156,13 +157,13 @@ describe("RedisConfigFetcher", function () {
   });
 
   describe("when parsing a server list", function () {
-    
+
     var last_log = null;
-    
+
     function _customLogger (msg) {
       last_log = msg;
     }
-    
+
     var rcf = new RedisConfigFetcher("localhost", 6379, {
       customLogger: _customLogger,
       debugLogging: true,
@@ -237,7 +238,7 @@ describe("RedisConfigFetcher", function () {
         .toContain("master")
         .toContain("s_down")
         .toContain("o_down");
-      
+
       expect(res[1].flags)
         .toBeAn(Array)
         .toContain("master");
@@ -249,11 +250,11 @@ describe("RedisConfigFetcher", function () {
   describe("when building a lookup", function () {
 
     var last_log = null;
-    
+
     function _customLogger (msg) {
       last_log = msg;
     }
-    
+
     var rcf = new RedisConfigFetcher("localhost", 6379, {
       customLogger: _customLogger,
       debugLogging: true,
@@ -290,7 +291,7 @@ describe("RedisConfigFetcher", function () {
 
     it("works when everything is ok", function () {
       var res = rcf._buildLookup([{name: "lol", ip: "123.45.67.89"}, {name: "derp", ip: "98.76.54.32"}]);
-      
+
       expect(res)
         .toExist()
         .toBeAn(Object);
@@ -338,7 +339,7 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('error', function (err) {
         expect(err.message)
           .toMatch(/timed out/i)
@@ -370,7 +371,7 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('error', function (err) {
         expect(err.message)
           .toMatch(/timed out/i)
@@ -402,7 +403,7 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('error', function (err) {
         expect(err.message).toMatch(/parsing master/i);
         done();
@@ -433,7 +434,7 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('error', function (err) {
         expect(err.message).toMatch(/parsing slave/i);
         done();
@@ -464,7 +465,7 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('config', function (name, master, slaves) {
         validateResults(name, master, slaves);
         done();
@@ -496,23 +497,23 @@ describe("RedisConfigFetcher", function () {
         commandTimeout: 50,
         watchedNames: ["foo", "bar"]
       });
-      
+
       var seen_foo = false
         , seen_bar = false;
 
       // Override the log to catch the warning about bar:
       rcf._log = function () {
         var msg = [].slice.call(arguments, 0).map(String).join(" ");
-        
+
         if (/warning.*watchedNames.*bar/i.test(msg)) {
           seen_bar = true;
-        
+
         } else if(/Done fetching configs/i.test(msg)) {
-          var err = (seen_foo && seen_bar) ? null : new Error("Things omitted");
+          var err = seen_foo && seen_bar ? null : new Error("Things omitted");
           return done(err);
         }
       };
-      
+
       // Register for 'config' events to catch info about foo:
       rcf.on('config', function (name, master, slaves) {
         validateResults(name, master, slaves);
@@ -532,7 +533,7 @@ describe("RedisConfigFetcher", function () {
 
       // A command starts with the MASTERS command, and ends with the CONFIG message.
       // Just make sure that we don't do things out-of-order:
-      
+
       // Do this 10 times
       var cmd_running = false;
       var cmd_count = 0;
@@ -541,7 +542,7 @@ describe("RedisConfigFetcher", function () {
         if (cmd === "INFO") { return cb(null, sentinel_info); }
         if (cmd.toLowerCase() === "sentinel") {
           switch(args[0].toLowerCase()) {
-            case "masters": 
+            case "masters":
               if (++cmd_count > 10) { throw new Error("Update Configs was run too many times"); }
               if (cmd_running     ) { throw new Error("Update Configs ran while another one was going"); }
               cmd_running = true;
@@ -558,12 +559,12 @@ describe("RedisConfigFetcher", function () {
         _testClient: client,
         commandTimeout: 50
       });
-      
+
       rcf.on('config', function (name, master, slaves) {
         if (!cmd_running) { throw new Error("Update Configs wasn't running, and yet finished"); }
         cmd_running = false;
         validateResults(name, master, slaves);
-        if (cmd_count == 10) { return done(); }
+        if (cmd_count === 10) { return done(); }
       });
 
       rcf.on('connected', function () {
