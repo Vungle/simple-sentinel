@@ -1,3 +1,7 @@
+# _NOT MAINTAINED ANYMORE_
+
+
+
 simple-sentinel [![Build Status](https://travis-ci.org/Vungle/simple-sentinel.svg?branch=master)](https://travis-ci.org/Vungle/simple-sentinel)
 ===============
 
