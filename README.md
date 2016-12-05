@@ -1,4 +1,8 @@
-# _NOT MAINTAINED ANYMORE_
+# _NOT MAINTAINED ANYMORE_. Fork at https://github.com/raydog/redsentinel
+For an active and maintained fork of **simple-sentinel** please look at [redsentinel](https://github.com/raydog/redsentinel) repo, created by the original author of this repo.
+
+
+
 
 
 
